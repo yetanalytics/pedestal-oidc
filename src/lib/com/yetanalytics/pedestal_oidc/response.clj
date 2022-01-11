@@ -9,3 +9,9 @@
   {:status 403
    :headers {}
    :body "FORBIDDEN"})
+
+(defn redirect
+  [url]
+  {:status  302
+   :headers {"Location" url}
+   :body ""})

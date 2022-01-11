@@ -18,6 +18,8 @@
     (fn []
       (sgen/return "openid"))))
 
+(s/def ::authentication-params
+  (s/map-of string? string?))
 
 (def provider-spec
   (s/keys :req-un [::client-id
@@ -25,4 +27,5 @@
                    ::authorization-endpoint
                    ::token-endpoint
                    ::user-info-endpoint
-                   ::scope]))
+                   ::scope]
+          :opt-un [::authentication-params]))

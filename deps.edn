@@ -3,7 +3,11 @@
         io.pedestal/pedestal.service {:mvn/version "0.5.9"}
         no.nsd/clj-jwt
         {:git/url "https://gitlab.nsd.no/clojure/clj-jwt.git"
-         :git/sha "bc23acb3c7cbf0d2def2d395c3e3d9c405be28d5"}}
+         :git/sha "bc23acb3c7cbf0d2def2d395c3e3d9c405be28d5"}
+        http-kit/http-kit {:mvn/version "2.6.0-alpha1"}
+        ring/ring-codec {:mvn/version "1.2.0"}
+        cheshire/cheshire {:mvn/version "5.10.1"}
+        camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}}
  :aliases
  {:dev {:extra-paths ["src/dev"]
         :extra-deps {io.pedestal/pedestal.jetty {:mvn/version "0.5.9"}
