@@ -7,7 +7,5 @@
             provider/provider-spec
             :min-count 1))
 
-
-
 (def config-spec
   (s/keys :req-un [::providers]))
