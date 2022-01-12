@@ -8,6 +8,7 @@
             [clojure.edn :as edn])
   (:import [java.io PushbackReader]))
 
+(s/def ::remote remote/remote-spec)
 (s/def ::provider provider/provider-spec)
 
 (s/def ::providers
@@ -17,6 +18,8 @@
 
 (def config-spec
   (s/keys :req-un [::providers]))
+
+(s/def ::local config-spec)
 
 (s/fdef get-local
   :args (s/cat :path (s/? string?))

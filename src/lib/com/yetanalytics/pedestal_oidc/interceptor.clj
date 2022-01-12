@@ -148,6 +148,7 @@
                       (resp/redirect return)
                       {:session
                        (session/identified-session
+                        (keyword cb-provider)
                         tokens)})))
             (do
               (ctl/warnf "OIDC unknown provider: %s" cb-provider)

@@ -18,6 +18,9 @@
            :com.yetanalytics.pedestal-oidc.identity.tokens/id-token
            :com.yetanalytics.pedestal-oidc.identity.tokens/token-type]))
 
+(s/def ::provider simple-keyword?)
+
 (def identity-spec
   (s/keys :req-un
-          [::tokens]))
+          [::provider
+           ::tokens]))

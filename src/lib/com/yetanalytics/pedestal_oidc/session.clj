@@ -40,11 +40,13 @@
 
 (s/fdef identified-session
   :args (s/cat
+         :provider simple-keyword?
          :tokens :com.yetanalytics.pedestal-oidc.session.identity/tokens)
   :ret (s/keys :req [::identity]))
 
 (defn identified-session
-  [tokens]
+  [provider tokens]
   ^:recreate
   {::identity
-   {:tokens tokens}})
+   {:provider provider
+    :tokens tokens}})
