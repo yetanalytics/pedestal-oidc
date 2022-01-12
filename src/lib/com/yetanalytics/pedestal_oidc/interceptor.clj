@@ -99,7 +99,8 @@
    {:enter
     (fn [{{{:keys [state code]
             :as query-params} :query-params
-           {{:keys [return]
+           {session-nonce :com.yetanalytics.pedestal-oidc/nonce
+            {:keys [return]
              cb-provider :provider
              cb-state :state
              :as callback-data} :com.yetanalytics.pedestal-oidc/callback}
@@ -118,19 +119,22 @@
               (unauthorized ctx))
           :else
           (if-let [provider (get providers (keyword cb-provider))]
-            ;; TODO: Get token, get user, add to context and then redirect to return
             (let [{:keys [token-endpoint
-                          userinfo-endpoint]} (config/get-remote provider)
+                          userinfo-endpoint
+                          jwks-uri]} (config/get-remote provider)
                   {:keys [access-token
                           refresh-token
                           expires-in
-                          id-token] :as tokens} (http! (req/token-request
-                                                        provider
-                                                        token-endpoint
-                                                        code
-                                                        callback-uri))
-                  #_#__ (pp/pprint tokens)
-                  ;; TODO: validate id-token, nonce
+                          id-token] :as tokens} (http!
+                                                 (req/token-request
+                                                  provider
+                                                  token-endpoint
+                                                  code
+                                                  callback-uri))
+                  {:keys [nonce]} (clj-jwt/unsign jwks-uri id-token)
+                  _ (when (not= nonce session-nonce)
+                      (throw (ex-info "Nonce mismatch"
+                                      {:type ::callback-nonce-mismatch})))
                   #_#_userinfo (http! (req/userinfo-request
                                    userinfo-endpoint
                                    access-token))]
@@ -175,7 +179,7 @@
 
 (defn decode-interceptor
   "Return an interceptor that decodes claims"
-  [jwk-endpoint
+  [jwks-uri
    & {:keys [required?
              check-header
              unauthorized]
@@ -190,7 +194,7 @@
                                     :headers
                                     check-header])]
         (try (->> auth-header
-                  (clj-jwt/unsign jwk-endpoint)
+                  (clj-jwt/unsign jwks-uri)
                   (assoc-in ctx [:request :claims]))
              (catch Exception ex
                (log/warn :msg "Unhandled exception yielded a 401")
