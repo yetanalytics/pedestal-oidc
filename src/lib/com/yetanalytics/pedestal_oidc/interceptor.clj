@@ -119,7 +119,8 @@
               (unauthorized ctx))
           :else
           (if-let [provider (get providers (keyword cb-provider))]
-            (let [{:keys [token-endpoint
+            (let [{:keys [issuer
+                          token-endpoint
                           userinfo-endpoint
                           jwks-uri]} (config/get-remote provider)
                   {:keys [access-token
@@ -131,13 +132,16 @@
                                                   token-endpoint
                                                   code
                                                   callback-uri))
-                  {:keys [nonce]} (clj-jwt/unsign jwks-uri id-token)
-                  _ (when (not= nonce session-nonce)
-                      (throw (ex-info "Nonce mismatch"
-                                      {:type ::callback-nonce-mismatch})))
-                  #_#_userinfo (http! (req/userinfo-request
-                                   userinfo-endpoint
-                                   access-token))]
+                  {:keys [iss
+                          nonce]} (clj-jwt/unsign jwks-uri id-token)]
+              ;; https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation
+              (when (not= issuer iss)
+                (throw (ex-info "Issuer mismatch"
+                                {:type ::callback-issuer-mismatch})))
+              (when (not= nonce session-nonce)
+                (throw (ex-info "Nonce mismatch"
+                                {:type ::callback-nonce-mismatch})))
+              ;; TODO: the rest of the validations
               (assoc ctx
                      :response
                      (merge
