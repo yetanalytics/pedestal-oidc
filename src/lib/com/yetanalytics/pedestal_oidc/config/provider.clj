@@ -8,7 +8,7 @@
 
 (s/def ::authorization-endpoint string?)
 (s/def ::token-endpoint string?)
-(s/def ::user-info-endpoint string?)
+(s/def ::userinfo-endpoint string?)
 (s/def ::jwks-endpoint string?)
 
 (s/def ::scope
@@ -27,7 +27,7 @@
                    ::client-secret
                    ::authorization-endpoint
                    ::token-endpoint
-                   ::user-info-endpoint
+                   ::userinfo-endpoint
                    ::jwks-endpoint
                    ::scope]
           :opt-un [::authentication-params]))
