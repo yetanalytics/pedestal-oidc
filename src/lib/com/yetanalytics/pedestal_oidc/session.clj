@@ -1,6 +1,7 @@
 (ns com.yetanalytics.pedestal-oidc.session
   "Session states"
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [com.yetanalytics.pedestal-oidc.identity :as ident]))
 
 (s/def ::nonce string?)
 
@@ -13,24 +14,7 @@
                    :com.yetanalytics.pedestal-oidc.session.callback/return
                    :com.yetanalytics.pedestal-oidc.session.callback/state]))
 
-(s/def :com.yetanalytics.pedestal-oidc.session.identity.tokens/access-token
-  string?)
-(s/def :com.yetanalytics.pedestal-oidc.session.identity.tokens/refresh-token
-  string?)
-(s/def :com.yetanalytics.pedestal-oidc.session.identity.tokens/id-token
-  string?)
-(s/def :com.yetanalytics.pedestal-oidc.session.identity.tokens/expires-in
-  nat-int?)
-
-(s/def :com.yetanalytics.pedestal-oidc.session.identity/tokens
-  (s/keys :req-un
-          [:com.yetanalytics.pedestal-oidc.session.identity.tokens/access-token
-           :com.yetanalytics.pedestal-oidc.session.identity.tokens/refresh-token
-           :com.yetanalytics.pedestal-oidc.session.identity.tokens/id-token]))
-
-(s/def ::identity
-  (s/keys :req-un
-          [:com.yetanalytics.pedestal-oidc.session.identity/tokens]))
+(s/def ::identity ident/identity-spec)
 
 (def session-spec
   (s/keys :req [::nonce]
