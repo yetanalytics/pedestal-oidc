@@ -3,6 +3,7 @@
             [io.pedestal.http.route :as route]
             [io.pedestal.http.body-params :as body-params]
             [ring.middleware.session.cookie :as cookie]
+            [ring.middleware.session.memory :as memory]
             [ring.util.response :as ring-resp]
             [com.yetanalytics.pedestal-oidc.config :as config]
             [com.yetanalytics.pedestal-oidc.interceptor :as i]
@@ -111,4 +112,6 @@
                                         ;:key-password "password"
                                         ;:ssl-port 8443
                                         :ssl? false}
-              ::http/enable-session {:store (cookie/cookie-store)}})
+              ::http/enable-session {:store
+                                     #_(cookie/cookie-store)
+                                     (memory/memory-store)}})
