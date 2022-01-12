@@ -1,7 +1,8 @@
 (ns com.yetanalytics.pedestal-oidc.request
   "Build OIDC requests"
   (:require [clojure.spec.alpha :as s]
-            [com.yetanalytics.pedestal-oidc.config.provider :as provider]))
+            [com.yetanalytics.pedestal-oidc.config.provider :as provider]
+            [com.yetanalytics.pedestal-oidc.session :as session]))
 
 (s/fdef token-request
   :args (s/cat
@@ -39,3 +40,22 @@
   {:url userinfo-endpoint
    :method :get
    :oauth-token token})
+
+(s/fdef refresh-request
+  :args (s/cat :provider provider/provider-spec
+               :token-endpoint string?
+               :tokens :com.yetanalytics.pedestal-oidc.session.identity/tokens))
+
+(defn refresh-request
+  "Form an OIDC token refresh request"
+  [{:keys [client-id
+           client-secret
+           scope]}
+   token-endpoint
+   {:keys [refresh-token]}]
+  {:url token-endpoint
+   :method :post
+   :form-params {:client_id client-id
+                 :client_secret client-secret
+                 :grant_type "refresh_token"
+                 :scope scope}})
