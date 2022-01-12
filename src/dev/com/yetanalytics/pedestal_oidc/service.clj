@@ -21,9 +21,18 @@
 
 (defn home-page
   [{:keys [session]}]
-  (ring-resp/response (format "<pre>%s</pre>"
-                              (with-out-str
-                                (pp/pprint session)))))
+  (ring-resp/response
+   (format
+    "<div>%s%s</div>"
+    (apply format
+           "<a href=\"%s\">%s</a>"
+           (if (:com.yetanalytics.pedestal-oidc.session/identity session)
+             ["/oidc/logout" "Log Out"]
+             ["/oidc/login" "Log In"]))
+    (format
+     "<pre>%s</pre>"
+     (with-out-str
+       (pp/pprint session))))))
 
 ;; Defines "/" and "/about" routes with their associated :get handlers.
 ;; The interceptors defined after the verb map (e.g., {:get home-page}
