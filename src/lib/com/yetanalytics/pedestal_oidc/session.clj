@@ -26,7 +26,7 @@
   (s/keys :req-un
           [:com.yetanalytics.pedestal-oidc.session.identity.tokens/access-token
            :com.yetanalytics.pedestal-oidc.session.identity.tokens/refresh-token
-           :com.yetanalytics.pedestal-oidc.session.identity.tokens/id-token
+           ;; :com.yetanalytics.pedestal-oidc.session.identity.tokens/id-token
            :com.yetanalytics.pedestal-oidc.session.identity.tokens/expires-in]))
 
 (s/def ::identity
@@ -64,4 +64,4 @@
   [tokens]
   ^:recreate
   {::identity
-   {:tokens tokens}})
+   {:tokens (dissoc tokens :id-token)}})

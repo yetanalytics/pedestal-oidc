@@ -129,6 +129,7 @@
                                                         token-endpoint
                                                         code
                                                         callback-uri))
+                  #_#__ (pp/pprint tokens)
                   ;; TODO: validate id-token, nonce
                   #_#_userinfo (http! (req/userinfo-request
                                    userinfo-endpoint
