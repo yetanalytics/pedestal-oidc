@@ -35,15 +35,6 @@
                        :body (slurp body)})))))
 
 (defn default-unauthorized [ctx & [?ex & _]]
-  ;; TODO: remove logging
-  (if ?ex
-    (do (ctl/errorf ?ex "Unhandled ex resulted in 401 ctx:\n\n%s"
-                    (with-out-str (pp/pprint ctx)))
-        (when-let [exd (ex-data ?ex)]
-          (ctl/errorf "exinfo data:\n\n%s"
-                      (with-out-str (pp/pprint exd)))))
-    (ctl/warnf "401 ctx: \n\n%s"
-               (with-out-str (pp/pprint ctx))))
   (assoc ctx :response resp/unauthorized))
 
 (s/def ::unauthorized fn?)
@@ -106,43 +97,53 @@
       :or {unauthorized default-unauthorized}}]
   (i/interceptor
    {:enter
-    (fn [{{{:keys [state code]} :query-params
+    (fn [{{{:keys [state code]
+            :as query-params} :query-params
            {{:keys [return]
              cb-provider :provider
-             cb-state :state} :com.yetanalytics.pedestal-oidc/callback}
+             cb-state :state
+             :as callback-data} :com.yetanalytics.pedestal-oidc/callback}
            :session} :request
           :keys [url-for]
           :as ctx}]
       (try
-        (if-let [provider (and state
-                               cb-state
-                               (= state cb-state)
-                               code
-                               (get providers (keyword cb-provider)))]
-          ;; TODO: Get token, get user, add to context and then redirect to return
-          (let [{:keys [token-endpoint
-                        userinfo-endpoint]} (config/get-remote provider)
-                {:keys [access-token
-                        refresh-token
-                        expires-in
-                        id-token] :as tokens} (http! (req/token-request
-                                                      provider
-                                                      token-endpoint
-                                                      code
-                                                      callback-uri))
-                ;; TODO: validate id-token, nonce
-                userinfo (http! (req/userinfo-request
-                                 userinfo-endpoint
-                                 access-token))]
-            (assoc ctx
-                   :response
-                   (merge
-                    (resp/redirect return)
-                    {:session
-                     (session/identified-session
-                      tokens
-                      userinfo)})))
-          (unauthorized ctx))
+        (cond
+          (nil? callback-data)
+          (do
+            (ctl/warn "OIDC callback data not found in session.")
+            (unauthorized ctx))
+
+          (not= state cb-state)
+          (do (ctl/warn "OIDC callback state mismatch")
+              (unauthorized ctx))
+          :else
+          (if-let [provider (get providers (keyword cb-provider))]
+            ;; TODO: Get token, get user, add to context and then redirect to return
+            (let [{:keys [token-endpoint
+                          userinfo-endpoint]} (config/get-remote provider)
+                  {:keys [access-token
+                          refresh-token
+                          expires-in
+                          id-token] :as tokens} (http! (req/token-request
+                                                        provider
+                                                        token-endpoint
+                                                        code
+                                                        callback-uri))
+                  ;; TODO: validate id-token, nonce
+                  userinfo (http! (req/userinfo-request
+                                   userinfo-endpoint
+                                   access-token))]
+              (assoc ctx
+                     :response
+                     (merge
+                      (resp/redirect return)
+                      {:session
+                       (session/identified-session
+                        tokens
+                        userinfo)})))
+            (do
+              (ctl/warnf "OIDC unknown provider: %s" cb-provider)
+              (unauthorized ctx))))
         (catch Exception ex
           (unauthorized ctx ex))))}))
 
