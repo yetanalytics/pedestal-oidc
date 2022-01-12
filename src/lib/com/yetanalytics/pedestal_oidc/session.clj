@@ -29,13 +29,9 @@
            :com.yetanalytics.pedestal-oidc.session.identity.tokens/id-token
            :com.yetanalytics.pedestal-oidc.session.identity.tokens/expires-in]))
 
-(s/def :com.yetanalytics.pedestal-oidc.session.identity/userinfo
-  (s/map-of keyword? string?))
-
 (s/def ::identity
   (s/keys :req-un
-          [#_:com.yetanalytics.pedestal-oidc.session.identity/tokens
-           :com.yetanalytics.pedestal-oidc.session.identity/userinfo]))
+          [:com.yetanalytics.pedestal-oidc.session.identity/tokens]))
 
 (def session-spec
   (s/keys :req [::nonce]
@@ -61,13 +57,11 @@
 
 (s/fdef identified-session
   :args (s/cat
-         :tokens :com.yetanalytics.pedestal-oidc.session.identity/tokens
-         :userinfo :com.yetanalytics.pedestal-oidc.session.identity/userinfo)
+         :tokens :com.yetanalytics.pedestal-oidc.session.identity/tokens)
   :ret (s/keys :req [::identity]))
 
 (defn identified-session
-  [tokens userinfo]
+  [tokens]
   ^:recreate
   {::identity
-   {;; :tokens tokens ;; These don't fit in cookie sessions lol
-    :userinfo userinfo}})
+   {:tokens tokens}})

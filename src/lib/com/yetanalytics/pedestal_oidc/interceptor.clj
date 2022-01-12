@@ -130,7 +130,7 @@
                                                         code
                                                         callback-uri))
                   ;; TODO: validate id-token, nonce
-                  userinfo (http! (req/userinfo-request
+                  #_#_userinfo (http! (req/userinfo-request
                                    userinfo-endpoint
                                    access-token))]
               (assoc ctx
@@ -139,8 +139,7 @@
                       (resp/redirect return)
                       {:session
                        (session/identified-session
-                        tokens
-                        userinfo)})))
+                        tokens)})))
             (do
               (ctl/warnf "OIDC unknown provider: %s" cb-provider)
               (unauthorized ctx))))
