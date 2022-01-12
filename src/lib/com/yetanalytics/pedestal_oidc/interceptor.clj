@@ -14,7 +14,9 @@
             [org.httpkit.client :as client]
             [cheshire.core :as json]
             [clojure.java.io :as io]
-            [camel-snake-kebab.core :as csk]))
+            [camel-snake-kebab.core :as csk]
+            [clojure.tools.logging :as ctl]
+            [clojure.pprint :as pp]))
 
 ;; TODO: maybe async
 (defn- http!
@@ -24,14 +26,24 @@
          :as resp} @(client/request (merge request
                                            {:as :stream}))]
     (if (= 200 status)
-      (with-open [rdr (io/reader body csk/->kebab-case-keyword)]
-        (json/parse-stream-strict rdr))
+      (with-open [rdr (io/reader body)]
+        (json/parse-stream-strict rdr csk/->kebab-case-keyword))
       (throw (ex-info "Non-200 http status"
                       {:type ::oidc-http-error
                        :request request
-                       :response resp})))))
+                       :response resp
+                       :body (slurp body)})))))
 
-(defn default-unauthorized [ctx & _]
+(defn default-unauthorized [ctx & [?ex & _]]
+  ;; TODO: remove logging
+  (if ?ex
+    (do (ctl/errorf ?ex "Unhandled ex resulted in 401 ctx:\n\n%s"
+                    (with-out-str (pp/pprint ctx)))
+        (when-let [exd (ex-data ?ex)]
+          (ctl/errorf "exinfo data:\n\n%s"
+                      (with-out-str (pp/pprint exd)))))
+    (ctl/warnf "401 ctx: \n\n%s"
+               (with-out-str (pp/pprint ctx))))
   (assoc ctx :response resp/unauthorized))
 
 (s/def ::unauthorized fn?)
@@ -52,17 +64,19 @@
       :or {unauthorized default-unauthorized}}]
   (i/interceptor
    {:enter
-    (fn [{{{:keys [provider
-                   return]
-            :or {provider "default"
+    (fn [{{{:keys [return]
+            provider-name :provider
+            :or {provider-name "default"
                  return "/"}} :query-params} :request
           :as ctx}]
       (try
-        (if-let [provider (get providers (keyword provider))]
-          (let [state (util/generate-state)
+        (if-let [provider (get providers (keyword provider-name))]
+          (let [{:keys [authorization-endpoint]} (config/get-remote provider)
+                state (util/generate-state)
                 nonce (util/generate-nonce)
                 auth-url (auth-req/build-url
                           provider
+                          authorization-endpoint
                           callback-uri
                           state
                           nonce)]
@@ -72,7 +86,7 @@
                     (resp/redirect auth-url)
                     {:session
                      (session/new-session
-                      nonce provider state return)})))
+                      nonce provider-name state return)})))
           (unauthorized ctx))
         (catch Exception ex
           (unauthorized ctx ex))))}))
@@ -80,12 +94,14 @@
 (s/fdef login-callback-interceptor
   :args (s/cat
          :config config/config-spec
+         :callback-uri string?
          :kwargs (s/keys* :opt-un [::unauthorized])))
 
 (defn login-callback-interceptor
   "Given a config, return an interceptor that will handle OIDC login callbacks
   and redirect the user to the appropriate destination or 401"
   [{:keys [providers]}
+   callback-uri
    & {:keys [unauthorized]
       :or {unauthorized default-unauthorized}}]
   (i/interceptor
@@ -95,6 +111,7 @@
              cb-provider :provider
              cb-state :state} :com.yetanalytics.pedestal-oidc/callback}
            :session} :request
+          :keys [url-for]
           :as ctx}]
       (try
         (if-let [provider (and state
@@ -103,15 +120,19 @@
                                code
                                (get providers (keyword cb-provider)))]
           ;; TODO: Get token, get user, add to context and then redirect to return
-          (let [{:keys [access-token
+          (let [{:keys [token-endpoint
+                        userinfo-endpoint]} (config/get-remote provider)
+                {:keys [access-token
                         refresh-token
                         expires-in
                         id-token] :as tokens} (http! (req/token-request
                                                       provider
-                                                      code))
+                                                      token-endpoint
+                                                      code
+                                                      callback-uri))
                 ;; TODO: validate id-token, nonce
                 userinfo (http! (req/userinfo-request
-                                 provider
+                                 userinfo-endpoint
                                  access-token))]
             (assoc ctx
                    :response

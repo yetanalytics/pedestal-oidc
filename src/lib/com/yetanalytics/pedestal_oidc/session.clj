@@ -34,7 +34,7 @@
 
 (s/def ::identity
   (s/keys :req-un
-          [:com.yetanalytics.pedestal-oidc.session.identity/tokens
+          [#_:com.yetanalytics.pedestal-oidc.session.identity/tokens
            :com.yetanalytics.pedestal-oidc.session.identity/userinfo]))
 
 (def session-spec
@@ -69,5 +69,5 @@
   [tokens userinfo]
   ^:recreate
   {::identity
-   {:tokens tokens
+   {;; :tokens tokens ;; These don't fit in cookie sessions lol
     :userinfo userinfo}})

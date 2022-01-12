@@ -2,7 +2,16 @@
   (:require [io.pedestal.http :as http]
             [io.pedestal.http.route :as route]
             [io.pedestal.http.body-params :as body-params]
-            [ring.util.response :as ring-resp]))
+            [ring.middleware.session.cookie :as cookie]
+            [ring.util.response :as ring-resp]
+            [com.yetanalytics.pedestal-oidc.config :as config]
+            [com.yetanalytics.pedestal-oidc.interceptor :as i]
+            [clojure.pprint :as pp]))
+
+;; http://0.0.0.0:8080/auth/realms/test/.well-known/openid-configuration
+
+(def oidc-config
+  (config/get-local "pedestal-oidc.edn"))
 
 (defn about-page
   [request]
@@ -11,17 +20,30 @@
                               (route/url-for ::about-page))))
 
 (defn home-page
-  [request]
-  (ring-resp/response "Hello World!"))
+  [{:keys [session]}]
+  (ring-resp/response (format "<pre>%s</pre>"
+                              (with-out-str
+                                (pp/pprint session)))))
 
 ;; Defines "/" and "/about" routes with their associated :get handlers.
 ;; The interceptors defined after the verb map (e.g., {:get home-page}
 ;; apply to / and its children (/about).
-(def common-interceptors [(body-params/body-params) http/html-body])
+(def common-interceptors [(body-params/body-params)
+                          http/html-body])
 
 ;; Tabular routes
 (def routes #{["/" :get (conj common-interceptors `home-page)]
-              ["/about" :get (conj common-interceptors `about-page)]})
+              ["/about" :get (conj common-interceptors `about-page)]
+              ["/oidc/login" :get (into common-interceptors
+                                        [(i/login-redirect-interceptor
+                                          oidc-config
+                                          "http://0.0.0.0:8081/oidc/callback")])
+               :route-name :com.yetanalytics.pedestal-oidc/login]
+              ["/oidc/callback" :get (into common-interceptors
+                                           [(i/login-callback-interceptor
+                                             oidc-config
+                                             "http://0.0.0.0:8081/oidc/callback")])
+               :route-name :com.yetanalytics.pedestal-oidc/callback]})
 
 ;; Map-based routes
 ;(def routes `{"/" {:interceptors [(body-params/body-params) http/html-body]
@@ -68,11 +90,12 @@
               ;;  This can also be your own chain provider/server-fn -- http://pedestal.io/reference/architecture-overview#_chain_provider
               ::http/type :jetty
               ;;::http/host "localhost"
-              ::http/port 8080
+              ::http/port 8081
               ;; Options to pass to the container (Jetty)
               ::http/container-options {:h2c? true
                                         :h2? false
                                         ;:keystore "test/hp/keystore.jks"
                                         ;:key-password "password"
                                         ;:ssl-port 8443
-                                        :ssl? false}})
+                                        :ssl? false}
+              ::http/enable-session {:store (cookie/cookie-store)}})

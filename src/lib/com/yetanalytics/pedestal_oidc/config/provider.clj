@@ -3,13 +3,9 @@
             [clojure.spec.gen.alpha :as sgen]
             [clojure.string :as cs]))
 
+(s/def ::config-uri string?)
 (s/def ::client-id string?)
 (s/def ::client-secret string?)
-
-(s/def ::authorization-endpoint string?)
-(s/def ::token-endpoint string?)
-(s/def ::userinfo-endpoint string?)
-(s/def ::jwks-endpoint string?)
 
 (s/def ::scope
   (s/with-gen
@@ -23,11 +19,8 @@
   (s/map-of string? string?))
 
 (def provider-spec
-  (s/keys :req-un [::client-id
+  (s/keys :req-un [::config-uri
+                   ::client-id
                    ::client-secret
-                   ::authorization-endpoint
-                   ::token-endpoint
-                   ::userinfo-endpoint
-                   ::jwks-endpoint
                    ::scope]
           :opt-un [::authentication-params]))

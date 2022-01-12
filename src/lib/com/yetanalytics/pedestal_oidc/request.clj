@@ -6,31 +6,35 @@
 (s/fdef token-request
   :args (s/cat
          :provider provider/provider-spec
-         :code string?)
+         :token-endpoint string?
+         :code string?
+         :callback-uri string?)
   :ret map?)
 
 (defn token-request
   "Form an OIDC token request"
   [{:keys [client-id
-           client-secret
-           token-endpoint]}
-   code]
+           client-secret]}
+   token-endpoint
+   code
+   callback-uri]
   {:url token-endpoint
    :method :post
    :form-params {:code code
                  :client_id client-id
                  :client_secret client-secret
-                 :grant_type "authorization_code"}})
+                 :grant_type "authorization_code"
+                 :redirect_uri callback-uri}})
 
 (s/fdef userinfo-request
   :args (s/cat
-         :provider provider/provider-spec
+         :userinfo-endpoint string?
          :token string?)
   :ret map?)
 
 (defn userinfo-request
   "Form an OIDC userinfo request"
-  [{:keys [userinfo-endpoint]}
+  [userinfo-endpoint
    token]
   {:url userinfo-endpoint
    :method :get
