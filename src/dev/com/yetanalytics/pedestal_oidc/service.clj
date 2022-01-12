@@ -52,7 +52,11 @@
                                            [(i/login-callback-interceptor
                                              oidc-config
                                              "http://0.0.0.0:8081/oidc/callback")])
-               :route-name :com.yetanalytics.pedestal-oidc/callback]})
+               :route-name :com.yetanalytics.pedestal-oidc/callback]
+              ["/oidc/logout" :get (into common-interceptors
+                                         [(i/logout-interceptor
+                                           oidc-config)])
+               :route-name :com.yetanalytics.pedestal-oidc/logout]})
 
 ;; Map-based routes
 ;(def routes `{"/" {:interceptors [(body-params/body-params) http/html-body]

@@ -147,6 +147,28 @@
         (catch Exception ex
           (unauthorized ctx ex))))}))
 
+(s/fdef logout-interceptor
+  :args (s/cat
+         :config config/config-spec
+         :after-uri (s/? string?)))
+
+;; TODO: implement OIDC logout
+;; http://openid.net/specs/openid-connect-frontchannel-1_0.html
+;; http://openid.net/specs/openid-connect-backchannel-1_0.html
+
+(defn logout-interceptor
+  "Clear session so OIDC user is logged-out"
+  [_ & [?after-uri]]
+  (i/interceptor
+   {:enter (fn [ctx]
+             (assoc
+              ctx
+              :response
+              (assoc
+               (resp/redirect (or ?after-uri
+                                  "/"))
+               :session nil)))}))
+
 ;; adapted from https://auth0.com/blog/secure-a-clojure-web-api-with-auth0/
 
 
