@@ -28,7 +28,7 @@
   :ret (s/nilable invalid-cause))
 
 (defn validate-id-token
-  "Check unsign and check the validity of the identity token per
+  "Unsign and check the validity of the identity token per
   https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation"
   [id-token
    {:keys [client-id]}
