@@ -2,7 +2,6 @@
   "Token helpers"
   (:require [clojure.spec.alpha :as s]
             [com.yetanalytics.pedestal-oidc.config :as config]
-            [com.yetanalytics.pedestal-oidc.identity :as ident]
             [no.nsd.clj-jwt :as clj-jwt]))
 
 (def invalid-cause
@@ -17,31 +16,31 @@
 
     ;; oidc only
     :nonce
+    :azp
     })
 
-(s/fdef validate-identity-tokens
+(s/fdef validate-id-token
   :args (s/cat
+         :id-token string?
          :provider ::config/provider
          :remote-config ::config/remote
-         :tokens ::ident/tokens
          :session-nonce string?)
   :ret (s/nilable invalid-cause))
 
-(defn validate-identity-tokens
-  "Check unsign and check the validity of the identity tokens map per
+(defn validate-id-token
+  "Check unsign and check the validity of the identity token per
   https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation"
-  [{:keys [client-id]}
+  [id-token
+   {:keys [client-id]}
    {:keys [issuer
            jwks-uri]}
-   {:keys [id-token
-           access-token
-           refresh-token] :as tokens}
    session-nonce]
   (try
     (let [;; Unsign
           {:keys [iss
                   nonce
-                  aud] :as tok} (clj-jwt/unsign
+                  aud
+                  azp] :as tok} (clj-jwt/unsign
                                  jwks-uri
                                  id-token
                                  {:iss issuer})]
@@ -53,6 +52,11 @@
                  (not= client-id aud))
             (and (vector? aud)
                  (not (contains? (set aud) client-id)))) :aud
+        ;; OIDC azp rules
+        (or (and (vector? aud)
+                 (not azp))
+            (and azp
+                 (not= client-id azp))) :azp
         ;; If everything is OK, return nil
         :else nil))
     (catch clojure.lang.ExceptionInfo exi

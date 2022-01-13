@@ -125,17 +125,18 @@
                           userinfo-endpoint
                           jwks-uri]
                    :as remote} (config/get-remote provider)
-                  tokens (http!
-                          (req/token-request
-                           provider
-                           token-endpoint
-                           code
-                           callback-uri))]
+                  {:keys [id-token]
+                   :as tokens} (http!
+                                (req/token-request
+                                 provider
+                                 token-endpoint
+                                 code
+                                 callback-uri))]
               (if-let [invalid-cause
-                       (token/validate-identity-tokens
+                       (token/validate-id-token
+                        id-token
                         provider
                         remote
-                        tokens
                         session-nonce)]
                 ;; For now, just fail on any cause
                 ;; TODO: possibly handle more gracefully
