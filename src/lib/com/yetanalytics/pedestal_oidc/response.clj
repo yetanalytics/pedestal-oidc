@@ -3,12 +3,14 @@
 (def unauthorized
   {:status 401
    :headers {}
-   :body "UNAUTHORIZED"})
+   :body "UNAUTHORIZED"
+   :session nil})
 
 (def forbidden
   {:status 403
    :headers {}
-   :body "FORBIDDEN"})
+   :body "FORBIDDEN"
+   :session nil})
 
 (defn redirect
   [url]

@@ -11,6 +11,7 @@
              :as auth-req]
             [com.yetanalytics.pedestal-oidc.util :as util]
             [com.yetanalytics.pedestal-oidc.session :as session]
+            [com.yetanalytics.pedestal-oidc.token :as token]
             [org.httpkit.client :as client]
             [cheshire.core :as json]
             [clojure.java.io :as io]
@@ -122,34 +123,35 @@
             (let [{:keys [issuer
                           token-endpoint
                           userinfo-endpoint
-                          jwks-uri]} (config/get-remote provider)
-                  {:keys [access-token
-                          refresh-token
-                          expires-in
-                          id-token] :as tokens} (http!
-                                                 (req/token-request
-                                                  provider
-                                                  token-endpoint
-                                                  code
-                                                  callback-uri))
-                  {:keys [iss
-                          nonce]} (clj-jwt/unsign jwks-uri id-token)]
-              ;; https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation
-              (when (not= issuer iss)
-                (throw (ex-info "Issuer mismatch"
-                                {:type ::callback-issuer-mismatch})))
-              (when (not= nonce session-nonce)
-                (throw (ex-info "Nonce mismatch"
-                                {:type ::callback-nonce-mismatch})))
-              ;; TODO: the rest of the validations
-              (assoc ctx
-                     :response
-                     (merge
-                      (resp/redirect return)
-                      {:session
-                       (session/identified-session
-                        (keyword cb-provider)
-                        tokens)})))
+                          jwks-uri]
+                   :as remote} (config/get-remote provider)
+                  tokens (http!
+                          (req/token-request
+                           provider
+                           token-endpoint
+                           code
+                           callback-uri))]
+              (if-let [invalid-cause
+                       (token/validate-identity-tokens
+                        provider
+                        remote
+                        tokens
+                        session-nonce)]
+                ;; For now, just fail on any cause
+                ;; TODO: possibly handle more gracefully
+                (do
+                  (ctl/warnf "token validation failed, cause: %s" invalid-cause)
+                  (unauthorized ctx))
+                ;; Success
+                (assoc ctx
+                       :response
+                       (merge
+                        (resp/redirect return)
+                        {:session
+                         (session/identified-session
+                          session-nonce
+                          (keyword cb-provider)
+                          tokens)}))))
             (do
               (ctl/warnf "OIDC unknown provider: %s" cb-provider)
               (unauthorized ctx))))
