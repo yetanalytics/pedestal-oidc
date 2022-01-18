@@ -1,7 +1,8 @@
 (ns com.yetanalytics.re-oidc
-  (:require [cljsjs.oidc-client :refer [UserManager]]
+  (:require [cljsjs.oidc-client :refer [UserManager Log]]
             [re-frame.core :as re-frame]))
 
+(set! Log.logger js/console)
 ;; status: :init, :loaded, :unloaded
 
 (defonce user-manager
