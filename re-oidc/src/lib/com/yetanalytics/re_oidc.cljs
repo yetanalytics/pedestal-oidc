@@ -160,12 +160,13 @@
 (re-frame/reg-event-fx
  ::init
  (fn [{{:keys [status]
-        :as db} :db} [_ config]]
+        :as db} :db} [_ {:keys [config auto-login]
+                         :or {auto-login false}}]]
    (if status
      {}
      {:db (assoc db ::status :init)
       ::init-fx {:config config
-                 ;; :auto-login true
+                 :auto-login auto-login
                  :after-login-callback
                  (fn [_]
                    (println "login callback complete"))

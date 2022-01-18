@@ -44,20 +44,23 @@
  ::init!
  (fn [_ _]
    {:fx [[:dispatch [::init-db]]
-         [:dispatch [::re-oidc/init
-                     {:authority "http://0.0.0.0:8080/auth/realms/test"
-                      :client_id "testapp_public"
-                      :redirect_uri "http://localhost:9500/#callback.login"
-                      :response_type "code" ;; "id_token token"
-                      :post_logout_redirect_uri "http://localhost:9500/#callback.logout"
-                      :scope "openid profile"
-                      ;; :loadUserInfo false
-                      :automaticSilentRenew true
-                      ;; :prompt "none"
+         [:dispatch
+          [::re-oidc/init
+           {:config
+            ;; These config options are passed directly to the OIDC client
+            {:authority "http://0.0.0.0:8080/auth/realms/test"
+             :client_id "testapp_public"
+             :redirect_uri "http://localhost:9500/#callback.login"
+             :response_type "code" ;; "id_token token"
+             :post_logout_redirect_uri "http://localhost:9500/#callback.logout"
+             :scope "openid profile"
+             ;; :loadUserInfo false
+             :automaticSilentRenew true
+             ;; :prompt "none"
 
-                      ;; If this is on, creates an iframe that messes everything up
-                      :monitorSession false
-                      }]]
+             ;; If this is on, creates an iframe that messes everything up
+             :monitorSession false}
+            :auto-login false}]]
 
          ]}))
 
