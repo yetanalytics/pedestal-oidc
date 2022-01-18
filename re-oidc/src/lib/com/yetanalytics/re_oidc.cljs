@@ -144,10 +144,15 @@
 
 (re-frame/reg-event-db
  ::user-unloaded
- (fn [db [_ js-user]]
+ (fn [db _]
    (-> db
        (dissoc ::user)
        (assoc ::status :unloaded))))
+
+(re-frame/reg-event-fx
+ ::silent-renew-error
+ (fn [_ [_ err]]
+   {:fx [[:dispatch [::user-unloaded]]]}))
 
 ;; "Public" API
 
@@ -159,7 +164,7 @@
      {}
      {:db (assoc db ::status :init)
       ::init-fx {:config config
-                 :auto-login true
+                 ;; :auto-login true
                  :after-login-callback
                  (fn [_]
                    (println "login callback complete"))
