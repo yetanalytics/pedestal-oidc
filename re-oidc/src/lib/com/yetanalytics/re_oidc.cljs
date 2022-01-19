@@ -106,17 +106,23 @@
  ::signin-redirect-fx
  (fn [{:keys [then-fn
               catch-fn]}]
-   (cond-> (.signinRedirect @user-manager)
-     catch-fn (.catch catch-fn)
-     then-fn (.then then-fn))))
+   (if-some [user-manager @user-manager]
+     (cond-> (.signinRedirect user-manager)
+       catch-fn (.catch catch-fn)
+       then-fn (.then then-fn))
+     (throw (ex-info "UserManager not Initialized!"
+                     {:type ::user-manager-not-initialized})))))
 
 (re-frame/reg-fx
  ::signout-redirect-fx
  (fn [{:keys [then-fn
               catch-fn]}]
-   (cond-> (.signoutRedirect @user-manager)
-     catch-fn (.catch catch-fn)
-     then-fn (.then then-fn))))
+   (if-some [user-manager @user-manager]
+     (cond-> (.signoutRedirect user-manager)
+       catch-fn (.catch catch-fn)
+       then-fn (.then then-fn))
+     (throw (ex-info "UserManager not Initialized!"
+                     {:type ::user-manager-not-initialized})))))
 
 (re-frame/reg-event-db
  ::user-loaded
