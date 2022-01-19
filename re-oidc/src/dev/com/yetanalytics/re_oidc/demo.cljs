@@ -4,6 +4,7 @@
    [reagent.core :as reagent :refer [atom]]
    [reagent.dom :as rdom]
    [re-frame.core :as re-frame]
+   [day8.re-frame.http-fx]
    [com.yetanalytics.re-oidc :as re-oidc]
    [goog.events :as events]
    [clojure.pprint :as pp])
