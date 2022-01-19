@@ -7,35 +7,24 @@
    [day8.re-frame.http-fx]
    [com.yetanalytics.re-oidc :as re-oidc]
    [goog.events :as events]
-   [clojure.pprint :as pp])
-  (:import [goog.history Html5History EventType]))
-
-#_(defn make-history []
-  (doto (Html5History.)
-    ;; for SPA use
-    #_(.setPathPrefix (str js/window.location.protocol
-                           "//"
-                           js/window.location.host))
-    #_(.setUseFragment false)))
-
-#_(defonce history
-  #_(make-history)
-  (delay
-    (doto (make-history)
-      (events/listen EventType.NAVIGATE
-                     (fn [x]
-                       (let [token (.-token x)]
-                         (println 'token token)
-                         #_(when (.startsWith token "/callback")
-                           (re-frame/dispatch [::re-oidc/store-callback token])))
-                       ))
-      (.setEnabled true))))
+   [clojure.pprint :as pp]
+   [ajax.core :as ajax]))
 
 ;; Init the demo's DB
 (re-frame/reg-event-db
  ::init-db
  (fn [_ _]
    {}))
+
+(re-frame/reg-event-fx
+ ::get-oidc-config!
+ (fn [{:keys [db]} _]
+   {:http-xhrio {:method :get
+                 :uri "/oidc.json"
+                 :response-format (ajax/json-response-format
+                                   {:keywords? true})
+                 :on-success [::recv-oidc-config]
+                 :on-failure [::fail-oidc-config]}}))
 
 (defn- push-state
   "Push history state to clean up on login/logout"
@@ -45,27 +34,15 @@
               js/document.title
               path))
 
-;; Compose init events for the demo db + OIDC's user manager
 (re-frame/reg-event-fx
- ::init!
- (fn [_ _]
-   {:fx [[:dispatch [::init-db]]
-         [:dispatch
+ ::recv-oidc-config
+ (fn [ctx [_ config]]
+   {:fx [[:dispatch
+          ;; Initialize OIDC from the remote config
           [::re-oidc/init
            (merge {:config
                    ;; These config options are passed directly to the OIDC client
-                   {:authority "http://0.0.0.0:8080/auth/realms/test"
-                    :client_id "testapp_public"
-                    :redirect_uri "http://localhost:9500/#callback.login"
-                    :response_type "code" ;; "id_token token"
-                    :post_logout_redirect_uri "http://localhost:9500/#callback.logout"
-                    :scope "openid profile"
-                    ;; :loadUserInfo false
-                    :automaticSilentRenew true
-                    ;; :prompt "none"
-
-                    ;; If this is on, creates an iframe that messes everything up
-                    :monitorSession false}
+                   config
                    :auto-login false}
 
                   ;; Callback States
@@ -82,9 +59,21 @@
                   (when (= "#callback.logout"
                            js/window.location.hash)
                     {:callback-type :logout
-                     :after-logout #(push-state "/")}))]]
+                     :after-logout #(push-state "/")}))]]]}))
 
-         ]}))
+(re-frame/reg-event-fx
+ ::fail-oidc-config
+ (fn [ctx [_ {:keys [status]}]]
+   (.error js/console "Failed to fetch OIDC config, status:" status)
+   {}))
+
+;; Compose init events for the demo db + OIDC's user manager
+(re-frame/reg-event-fx
+ ::init!
+ (fn [_ _]
+   {:fx [[:dispatch [::init-db]]
+         ;; Fetch the OIDC config, initializing the UserManager on success
+         [:dispatch [::get-oidc-config!]]]}))
 
 (re-frame/reg-sub
  ::db-debug
@@ -119,7 +108,6 @@
 ;; conditionally start your application based on the presence of an "app" element
 ;; this is particularly helpful for testing this ns without launching the app
 (defn init! []
-  #_@history
   (re-frame/dispatch [::init!])
   (mount-app-element))
 
