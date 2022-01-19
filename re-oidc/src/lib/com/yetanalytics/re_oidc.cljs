@@ -47,51 +47,39 @@
     (doto (UserManager. (clj->js config))
       reg-events!)))
 
-(defn- push-state
-  "Push history state to clean up on login/logout"
-  [path]
-  (.pushState js/window.history
-              (clj->js {})
-              js/document.title
-              path))
-
 (re-frame/reg-fx
  ::init-fx
  (fn [{:keys [config
+
+              callback-type ;; nilable :login :logout
+              login-query-string ;; Query String, REQUIRED for login
+              logout-url ;; optional for logout
+
               auto-login
 
               after-login-callback
               catch-login-callback
               after-logout-callback
               catch-logout-callback]}]
-   (let [manager (swap! user-manager init! config)
-         loc-hash js/window.location.hash
-         loc-search (not-empty js/window.location.search)]
-     ;; TODO: this is brittle. figure out good api to incorp. with routing
-     (cond
-       (and (= "#callback.login" loc-hash)
-            loc-search)
-       (do
-         (push-state "/")
-         (-> manager
-             (.signinRedirectCallback loc-search)
-             (cond->
-                 catch-login-callback
-               (.catch catch-login-callback)
-               after-login-callback
-               (.then after-login-callback))))
-       (= "#callback.logout" loc-hash)
-       (do
-         (push-state "/")
-         (-> manager
-             (.signoutRedirectCallback)
-             (cond->
-                 catch-logout-callback
-               (.catch catch-logout-callback)
-               after-logout-callback
-               (.then after-logout-callback))))
-
-       :else
+   (let [manager (swap! user-manager init! config)]
+     (case callback-type
+       :login
+       (-> manager
+           (.signinRedirectCallback login-query-string)
+           (cond->
+               catch-login-callback
+             (.catch catch-login-callback)
+             after-login-callback
+             (.then after-login-callback)))
+       :logout
+       (-> (if (not-empty logout-url)
+             (.signoutRedirectCallback manager logout-url)
+             (.signoutRedirectCallback manager))
+           (cond->
+               catch-logout-callback
+             (.catch catch-logout-callback)
+             after-logout-callback
+             (.then after-logout-callback)))
        ;; If a user is present, reflect in the db
        (-> manager
            .getUser
@@ -172,25 +160,11 @@
 (re-frame/reg-event-fx
  ::init
  (fn [{{:keys [status]
-        :as db} :db} [_ {:keys [config auto-login]
-                         :or {auto-login false}}]]
+        :as db} :db} [_ re-oidc-config]]
    (if status
      {}
      {:db (assoc db ::status :init)
-      ::init-fx {:config config
-                 :auto-login auto-login
-                 :after-login-callback
-                 (fn [_]
-                   (println "login callback complete"))
-                 :catch-login-callback
-                 (fn [error]
-                   (.error js/console "login callback error" error))
-                 :after-logout-callback
-                 (fn [_]
-                   (println "logout callback complete"))
-                 :catch-logout-callback
-                 (fn [error]
-                   (.error js/console "logout callback error" error))}})))
+      ::init-fx re-oidc-config})))
 
 (re-frame/reg-event-fx
  ::log-in

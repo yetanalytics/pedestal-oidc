@@ -39,6 +39,14 @@
      db
      {})))
 
+(defn- push-state
+  "Push history state to clean up on login/logout"
+  [path]
+  (.pushState js/window.history
+              (clj->js {})
+              js/document.title
+              path))
+
 ;; Compose init events for the demo db + OIDC's user manager
 (re-frame/reg-event-fx
  ::init!
@@ -46,21 +54,37 @@
    {:fx [[:dispatch [::init-db]]
          [:dispatch
           [::re-oidc/init
-           {:config
-            ;; These config options are passed directly to the OIDC client
-            {:authority "http://0.0.0.0:8080/auth/realms/test"
-             :client_id "testapp_public"
-             :redirect_uri "http://localhost:9500/#callback.login"
-             :response_type "code" ;; "id_token token"
-             :post_logout_redirect_uri "http://localhost:9500/#callback.logout"
-             :scope "openid profile"
-             ;; :loadUserInfo false
-             :automaticSilentRenew true
-             ;; :prompt "none"
+           (merge {:config
+                   ;; These config options are passed directly to the OIDC client
+                   {:authority "http://0.0.0.0:8080/auth/realms/test"
+                    :client_id "testapp_public"
+                    :redirect_uri "http://localhost:9500/#callback.login"
+                    :response_type "code" ;; "id_token token"
+                    :post_logout_redirect_uri "http://localhost:9500/#callback.logout"
+                    :scope "openid profile"
+                    ;; :loadUserInfo false
+                    :automaticSilentRenew true
+                    ;; :prompt "none"
 
-             ;; If this is on, creates an iframe that messes everything up
-             :monitorSession false}
-            :auto-login false}]]
+                    ;; If this is on, creates an iframe that messes everything up
+                    :monitorSession false}
+                   :auto-login false}
+
+                  ;; Callback States
+                  (when (= "#callback.login"
+                           js/window.location.hash)
+                    (if-some [qstring (not-empty
+                                      js/window.location.search)]
+                      {:callback-type :login
+                       :login-query-string qstring
+                       ;; clear the callback fragment/go somewhere
+                       :after-login-callback #(push-state "/")}
+                      (throw (ex-info "Login callback query string required"
+                                      {:type ::login-qstring-required}))))
+                  (when (= "#callback.logout"
+                           js/window.location.hash)
+                    {:callback-type :logout
+                     :after-logout-callback #(push-state "/")}))]]
 
          ]}))
 
