@@ -180,9 +180,13 @@
 (re-frame/reg-event-db
  ::login-callback
  (fn [db [_ qstring]]
-   (assoc db
-          ::callback :login
-          ::login-query-string qstring)))
+   (if (::status db)
+     (do
+       (.warn js/console "::re-oidc/login-callback called after UserManager init, ignored")
+       db)
+     (assoc db
+            ::callback :login
+            ::login-query-string qstring))))
 
 
 (re-frame/reg-event-fx
@@ -196,8 +200,12 @@
 (re-frame/reg-event-db
  ::logout-callback
  (fn [db _]
-   (assoc db
-          ::callback :logout)))
+   (if (::status db)
+     (do
+       (.warn js/console "::re-oidc/logout-callback called after UserManager init, ignored")
+       db)
+     (assoc db
+            ::callback :logout))))
 
 ;; Initialize the user manager
 (re-frame/reg-event-fx
