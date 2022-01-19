@@ -63,33 +63,33 @@
 
               auto-login
 
-              after-login-callback
-              catch-login-callback
-              after-logout-callback
-              catch-logout-callback]}]
+              after-login
+              catch-login
+              after-logout
+              catch-logout]}]
    (let [manager (swap! user-manager init! config)]
      (case callback-type
        :login
        (-> manager
            (.signinRedirectCallback login-query-string)
            (cond->
-               catch-login-callback
+               catch-login
              (.catch (cb-fn-or-dispatch
-                      catch-login-callback))
-             after-login-callback
+                      catch-login))
+             after-login
              (.then (cb-fn-or-dispatch
-                     after-login-callback))))
+                     after-login))))
        :logout
        (-> (if (not-empty logout-url)
              (.signoutRedirectCallback manager logout-url)
              (.signoutRedirectCallback manager))
            (cond->
-               catch-logout-callback
+               catch-logout
              (.catch (cb-fn-or-dispatch
-                      catch-logout-callback))
-             after-logout-callback
+                      catch-logout))
+             after-logout
              (.then (cb-fn-or-dispatch
-                     after-logout-callback))))
+                     after-logout))))
        ;; If a user is present, reflect in the db
        (-> manager
            .getUser

@@ -78,13 +78,13 @@
                       {:callback-type :login
                        :login-query-string qstring
                        ;; clear the callback fragment/go somewhere
-                       :after-login-callback #(push-state "/")}
+                       :after-login #(push-state "/")}
                       (throw (ex-info "Login callback query string required"
                                       {:type ::login-qstring-required}))))
                   (when (= "#callback.logout"
                            js/window.location.hash)
                     {:callback-type :logout
-                     :after-logout-callback #(push-state "/")}))]]
+                     :after-logout #(push-state "/")}))]]
 
          ]}))
 
