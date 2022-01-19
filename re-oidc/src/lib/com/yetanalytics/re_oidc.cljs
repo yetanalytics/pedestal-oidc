@@ -163,6 +163,12 @@
 
 ;; "Public" API
 
+;; Get the UserManager for customization
+(re-frame/reg-cofx
+ ::user-manager
+ (fn [cofx _]
+   (assoc cofx ::user-manager @user-manager)))
+
 (re-frame/reg-event-fx
  ::init
  (fn [{{:keys [status]
