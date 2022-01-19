@@ -47,6 +47,12 @@
     (doto (UserManager. (clj->js config))
       reg-events!)))
 
+(defn- cb-fn-or-dispatch
+  [x]
+  (if (keyword? x)
+    (dispatch-cb x)
+    x))
+
 (re-frame/reg-fx
  ::init-fx
  (fn [{:keys [config
@@ -68,18 +74,22 @@
            (.signinRedirectCallback login-query-string)
            (cond->
                catch-login-callback
-             (.catch catch-login-callback)
+             (.catch (cb-fn-or-dispatch
+                      catch-login-callback))
              after-login-callback
-             (.then after-login-callback)))
+             (.then (cb-fn-or-dispatch
+                     after-login-callback))))
        :logout
        (-> (if (not-empty logout-url)
              (.signoutRedirectCallback manager logout-url)
              (.signoutRedirectCallback manager))
            (cond->
                catch-logout-callback
-             (.catch catch-logout-callback)
+             (.catch (cb-fn-or-dispatch
+                      catch-logout-callback))
              after-logout-callback
-             (.then after-logout-callback)))
+             (.then (cb-fn-or-dispatch
+                     after-logout-callback))))
        ;; If a user is present, reflect in the db
        (-> manager
            .getUser
