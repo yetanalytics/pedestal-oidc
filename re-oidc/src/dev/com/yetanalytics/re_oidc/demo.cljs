@@ -40,26 +40,12 @@
    {:fx [[:dispatch
           ;; Initialize OIDC from the remote config
           [::re-oidc/init
-           (merge {:config
-                   ;; These config options are passed directly to the OIDC client
-                   config
-                   :auto-login false}
-
-                  ;; Callback States
-                  (when (= "#callback.login"
-                           js/window.location.hash)
-                    (if-some [qstring (not-empty
-                                      js/window.location.search)]
-                      {:callback-type :login
-                       :login-query-string qstring
-                       ;; clear the callback fragment/go somewhere
-                       :after-login #(push-state "/")}
-                      (throw (ex-info "Login callback query string required"
-                                      {:type ::login-qstring-required}))))
-                  (when (= "#callback.logout"
-                           js/window.location.hash)
-                    {:callback-type :logout
-                     :after-logout #(push-state "/")}))]]]}))
+           {:config
+            ;; These config options are passed directly to the OIDC client
+            config
+            :auto-login false
+            :after-login #(push-state "/") ;; takes fn or dispatch key
+            :after-logout #(push-state "/")}]]]}))
 
 (re-frame/reg-event-fx
  ::fail-oidc-config
@@ -92,10 +78,10 @@
             @(re-frame/subscribe [::db-debug])))]
    (if @(re-frame/subscribe [::re-oidc/logged-in?])
      [:button
-      {:on-click #(re-frame/dispatch [::re-oidc/log-out])}
+      {:on-click #(re-frame/dispatch [::re-oidc/logout])}
       "Log out"]
      [:button
-      {:on-click #(re-frame/dispatch [::re-oidc/log-in])}
+      {:on-click #(re-frame/dispatch [::re-oidc/login])}
       "Log in"])])
 
 (defn mount [el]
@@ -105,10 +91,23 @@
   (when-let [el (get-app-element)]
     (mount el)))
 
+(defn detect-callbacks!
+  "Detetct post login/logout callbacks and issue route dispatch to re-oidc"
+  []
+  (let [hsh js/window.location.hash]
+    (case hsh
+      "#callback.login" (re-frame/dispatch
+                         [::re-oidc/login-callback js/window.location.search])
+      "#callback.logout" (do (println "logout detect")
+                             (re-frame/dispatch
+                              [::re-oidc/logout-callback]))
+      nil)))
+
 ;; conditionally start your application based on the presence of an "app" element
 ;; this is particularly helpful for testing this ns without launching the app
 (defn init! []
-  (re-frame/dispatch [::init!])
+  (re-frame/dispatch-sync [::init!])
+  (detect-callbacks!)
   (mount-app-element))
 
 (defonce init

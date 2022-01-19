@@ -98,7 +98,7 @@
               (if ?user
                 (re-frame/dispatch [::user-loaded ?user])
                 (when auto-login
-                  (re-frame/dispatch [::log-in]))))))))))
+                  (re-frame/dispatch [::login]))))))))))
 
 (re-frame/reg-fx
  ::signin-redirect-fx
@@ -159,7 +159,9 @@
  (fn [_ [_ err]]
    {:fx [[:dispatch [::user-unloaded]]]}))
 
-;; "Public" API
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; "Public" API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Get the UserManager for customization
 (re-frame/reg-cofx
@@ -168,27 +170,55 @@
    (assoc cofx ::user-manager @user-manager)))
 
 (re-frame/reg-event-fx
- ::init
- (fn [{{:keys [status]
-        :as db} :db} [_ re-oidc-config]]
-   (if status
-     {}
-     {:db (assoc db ::status :init)
-      ::init-fx re-oidc-config})))
-
-(re-frame/reg-event-fx
- ::log-in
+ ::login
  (fn [{:keys [db]} _]
    (if-not (= :loaded (::status db))
      {::signin-redirect-fx {:then-fn #(println "signin redirect complete")}}
      {})))
 
+;; Set login callback key + qstring
+(re-frame/reg-event-db
+ ::login-callback
+ (fn [db [_ qstring]]
+   (assoc db
+          ::callback :login
+          ::login-query-string qstring)))
+
+
 (re-frame/reg-event-fx
- ::log-out
+ ::logout
  (fn [{:keys [db]} _]
    (if (= :loaded (::status db))
      {::signout-redirect-fx {:then-fn #(println "signout redirect complete")}}
      {})))
+
+;; Set logout callback key
+(re-frame/reg-event-db
+ ::logout-callback
+ (fn [db _]
+   (assoc db
+          ::callback :logout)))
+
+;; Initialize the user manager
+(re-frame/reg-event-fx
+ ::init
+ (fn [{{:keys [status]
+        ?callback ::callback
+        ?qstring ::login-query-string
+        :as db} :db} [_ re-oidc-config]]
+   (if status
+     {}
+     {:db (-> db
+              (assoc ::status :init)
+              (dissoc ::callback
+                      ::login-query-string))
+      ::init-fx
+      (merge re-oidc-config
+             (when ?callback
+               {:callback-type ?callback})
+             (when ?qstring
+               {:login-query-string ?qstring}))})))
+
 
 ;; Subs
 (re-frame/reg-sub
