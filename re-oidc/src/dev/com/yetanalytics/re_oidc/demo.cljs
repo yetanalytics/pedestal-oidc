@@ -33,11 +33,8 @@
 ;; Init the demo's DB
 (re-frame/reg-event-db
  ::init-db
- (fn [db _]
-   ;; The callback state may store before init, so don't overwrite
-   (if (not-empty db)
-     db
-     {})))
+ (fn [_ _]
+   {}))
 
 (defn- push-state
   "Push history state to clean up on login/logout"
