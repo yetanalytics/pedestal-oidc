@@ -12,6 +12,7 @@
 (s/def ::user user/user-spec)
 (s/def ::callback #{:login :logout})
 (s/def ::login-query-string string?)
+(s/def ::return string?) ;; where to go after login/logout
 
 (s/def :com.yetanalytics.re-oidc.error/name string?)
 (s/def :com.yetanalytics.re-oidc.error/message string?)
@@ -32,6 +33,7 @@
                 ::user
                 ::callback
                 ::login-query-string
+                ::return
                 ::errors]))
 
 (defonce user-manager
@@ -124,18 +126,28 @@
          .signinRedirect
          (handle-promise on-success on-failure)))))
 
+(defn- push-state
+  "Push history state to clean up on login/logout"
+  [path]
+  (.pushState js/window.history
+              (clj->js {})
+              js/document.title
+              path))
+
 (re-frame/reg-fx
  ::signin-redirect-callback-fx
  (fn [{:keys [on-success
               on-failure
-              query-string]}]
+              query-string
+              return]}]
    (let [on-failure (or on-failure
                         [::add-error ::signin-redirect-callback-fx])
          um (get-user-manager)]
      (-> um
          (.signinRedirectCallback query-string)
          (handle-promise on-success on-failure)
-         (.then #(.clearStaleState um))))))
+         (.then #(.clearStaleState um))
+         (.then #(push-state return))))))
 
 (re-frame/reg-fx
  ::signout-redirect-fx
@@ -150,12 +162,14 @@
 (re-frame/reg-fx
  ::signout-redirect-callback-fx
  (fn [{:keys [on-success
-              on-failure]}]
+              on-failure
+              return]}]
    (let [on-failure (or on-failure
                         [::add-error ::signout-redirect-callback-fx])]
      (-> (get-user-manager)
          .signoutRedirectCallback
-         (handle-promise on-success on-failure)))))
+         (handle-promise on-success on-failure)
+         (.then #(push-state return))))))
 
 (defn- js-error->clj
   [handler-id js-error]
@@ -218,30 +232,50 @@
 ;; "Public" API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Pre-initialization events
+;; (maybe) Pre-initialization events
 
 ;; Add login redirect callback state, usually from routing
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::login-callback
- (fn [db [_ qstring]]
-   (if (::status db)
-     (do
-       (.warn js/console "::re-oidc/login-callback called after UserManager init, ignored")
-       db)
-     (assoc db
-            ::callback :login
-            ::login-query-string qstring))))
+ (fn [{{?status ::status
+        :as db} :db} [_ qstring ?return]]
+   (let [return (or ?return "/")]
+     (case ?status
+       ;; Pre-init
+       nil {:db (assoc db
+                       ::callback :login
+                       ::login-query-string qstring
+                       ::return return)}
+       :init {:db db
+              :fx [[::signin-redirect-callback-fx
+                    {:query-string qstring
+                     :return return}]]}
+       (do
+         (.warn js/console
+                "::re-oidc/login-callback called with unknown status"
+                (name ?status))
+         {})))))
 
 ;; Add logout redirect callback state, usually from routing
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::logout-callback
- (fn [db _]
-   (if (::status db)
-     (do
-       (.warn js/console "::re-oidc/logout-callback called after UserManager init, ignored")
-       db)
-     (assoc db
-            ::callback :logout))))
+ (fn [{{?status ::status
+        :as db} :db} [_ ?return]]
+   (println 'db db)
+   (let [return (or ?return "/")]
+     (case ?status
+       ;; Pre-init
+       nil {:db (assoc db
+                       ::callback :logout
+                       ::return return)}
+       :init {:db db
+              :fx [[::signout-redirect-callback-fx
+                    {:return return}]]}
+       (do
+         (.warn js/console
+                "::re-oidc/logout-callback called with unknown status"
+                (name ?status))
+         {})))))
 
 ;; Initialization
 ;; Sets up the OIDC client from config and queues login/logout callback
@@ -251,6 +285,7 @@
  (fn [{{:keys [status]
         ?callback ::callback
         ?qstring ::login-query-string
+        ?return ::return
         :as db} :db} [_ {:keys [config
                                 auto-login
                                 on-login-success
@@ -264,16 +299,19 @@
      {:db (-> db
               (assoc ::status :init)
               (dissoc ::callback
-                      ::login-query-string))
+                      ::login-query-string
+                      ::return))
       :fx [[::init-fx
             {:config config}]
            (case ?callback
              :login [::signin-redirect-callback-fx
                      {:query-string ?qstring
+                      :return ?return
                       :on-success on-login-success
                       :on-failure on-login-failure}]
              :logout [::signout-redirect-callback-fx
-                      {:on-success on-logout-success
+                      {:return ?return
+                       :on-success on-logout-success
                        :on-failure on-logout-failure}]
              [::get-user-fx
               ;; We need to set the user, if present, no matter what
