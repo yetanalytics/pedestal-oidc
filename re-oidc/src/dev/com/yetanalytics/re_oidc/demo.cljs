@@ -11,6 +11,20 @@
    [clojure.pprint :as pp]
    [ajax.core :as ajax]))
 
+(defn- push-state
+  "Push history state to clean up on login/logout"
+  [path]
+  (.pushState js/window.history
+              (clj->js {})
+              js/document.title
+              path))
+
+;; config for re-oidc that won't change, isn't loaded dynamically
+(def static-config
+  {:auto-login false
+   :on-login-success #(push-state "/")
+   :on-logout-success #(push-state "/")})
+
 ;; Init the demo's DB
 (re-frame/reg-event-db
  ::init-db
@@ -28,14 +42,6 @@
                  :on-success [::recv-oidc-config]
                  :on-failure [::fail-oidc-config]}}))
 
-(defn- push-state
-  "Push history state to clean up on login/logout"
-  [path]
-  (.pushState js/window.history
-              (clj->js {})
-              js/document.title
-              path))
-
 ;; Receive the OIDC config and initialize
 (re-frame/reg-event-fx
  ::recv-oidc-config
@@ -43,13 +49,10 @@
    {:fx [[:dispatch
           ;; Initialize OIDC from the remote config
           [::re-oidc/init
-           {:config
-            ;; These config options are passed directly to the OIDC client
-            config
-            :auto-login false
-            ;; Will get the raw result of the .getUser call, nil if logged out
-            ;; :on-get-user-success #(.log js/console "js user:" %)
-            }]]]}))
+           (assoc static-config
+                  ;; These config options are passed directly to the OIDC client
+                  :config
+                  config)]]]}))
 
 (re-frame/reg-event-fx
  ::fail-oidc-config
@@ -82,9 +85,12 @@
   (let [hsh js/window.location.hash]
     (case hsh
       "#callback.login" (re-frame/dispatch
-                         [::re-oidc/login-callback js/window.location.search])
+                         [::re-oidc/login-callback
+                          js/window.location.search
+                          static-config])
       "#callback.logout" (re-frame/dispatch
-                          [::re-oidc/logout-callback])
+                          [::re-oidc/logout-callback
+                           static-config])
       nil)))
 
 (defn hello-world []
