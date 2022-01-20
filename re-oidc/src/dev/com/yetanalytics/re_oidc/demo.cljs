@@ -105,7 +105,7 @@
     (mount el)))
 
 (defn detect-callbacks!
-  "Detetct post login/logout callbacks and issue route dispatch to re-oidc"
+  "Detetct post login/logout callbacks and issue route dispatch to re-oidc."
   []
   (let [hsh js/window.location.hash]
     (case hsh
@@ -115,8 +115,6 @@
                           [::re-oidc/logout-callback])
       nil)))
 
-;; conditionally start your application based on the presence of an "app" element
-;; this is particularly helpful for testing this ns without launching the app
 (defn init! []
   (re-frame/dispatch-sync [::init!])
   (detect-callbacks!)
