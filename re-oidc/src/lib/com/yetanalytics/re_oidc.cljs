@@ -1,9 +1,24 @@
 (ns com.yetanalytics.re-oidc
   (:require [cljsjs.oidc-client :refer [UserManager Log]]
-            [re-frame.core :as re-frame]))
+            [re-frame.core :as re-frame]
+            [clojure.spec.alpha :as s :include-macros true]
+            [com.yetanalytics.re-oidc.user :as user]))
 
-(set! Log.logger js/console)
-;; status: :init, :loaded, :unloaded
+;; OIDC lib logging can be enabled:
+
+#_(set! Log.logger js/console)
+
+(s/def ::status #{:init :loaded :unloaded})
+(s/def ::user user/user-spec)
+(s/def ::callback #{:login :logout})
+(s/def ::login-query-string string?)
+
+;; A (partial) spec for what re-oidc puts in the re-frame db
+(def partial-db-spec
+  (s/keys :opt [::status
+                ::user
+                ::callback
+                ::login-query-string]))
 
 (defonce user-manager
   (atom nil))
