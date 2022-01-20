@@ -6,5 +6,6 @@
     "post_logout_redirect_uri": "http://localhost:9500/#callback.logout",
     "scope": "openid profile",
     "automaticSilentRenew": false,
-    "monitorSession": false
+    "monitorSession": false,
+    "filterProtocolClaims": false
 }
