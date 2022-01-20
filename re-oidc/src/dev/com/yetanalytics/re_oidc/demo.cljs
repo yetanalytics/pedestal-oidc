@@ -47,10 +47,9 @@
             ;; These config options are passed directly to the OIDC client
             config
             :auto-login false
-            :on-login-success #(push-state "/") ;; takes fn or dispatch vec
-            :on-logout-success #(push-state "/")
             ;; Will get the raw result of the .getUser call, nil if logged out
-            :on-get-user-success #(.log js/console "js user:" %)}]]]}))
+            ;; :on-get-user-success #(.log js/console "js user:" %)
+            }]]]}))
 
 (re-frame/reg-event-fx
  ::fail-oidc-config
@@ -77,6 +76,17 @@
 (defn get-app-element []
   (gdom/getElement "app"))
 
+(defn process-callbacks!
+  "Detect post login/logout callbacks and issue route dispatch to re-oidc."
+  [& _]
+  (let [hsh js/window.location.hash]
+    (case hsh
+      "#callback.login" (re-frame/dispatch
+                         [::re-oidc/login-callback js/window.location.search])
+      "#callback.logout" (re-frame/dispatch
+                          [::re-oidc/logout-callback])
+      nil)))
+
 (defn hello-world []
   [:div
    [:h2 "DEMO"]
@@ -84,6 +94,12 @@
     (if @(re-frame/subscribe [::re-oidc/logged-in?])
       "You are logged in"
       "You are logged out")]
+   (let [hsh js/window.location.hash]
+     (when (#{"#callback.login"
+              "#callback.logout"} hsh)
+       [:button
+        {:on-click process-callbacks!}
+        (str "process callback for: " hsh)]))
    [:pre @(re-frame/subscribe [::db-debug])]
    ;; Since the login/logout actions must run after init,
    ;; you can use the ::re-oidc/status key for things like loading
@@ -104,20 +120,8 @@
   (when-let [el (get-app-element)]
     (mount el)))
 
-(defn detect-callbacks!
-  "Detetct post login/logout callbacks and issue route dispatch to re-oidc."
-  []
-  (let [hsh js/window.location.hash]
-    (case hsh
-      "#callback.login" (re-frame/dispatch
-                         [::re-oidc/login-callback js/window.location.search])
-      "#callback.logout" (re-frame/dispatch
-                          [::re-oidc/logout-callback])
-      nil)))
-
 (defn init! []
   (re-frame/dispatch-sync [::init!])
-  (detect-callbacks!)
   (mount-app-element))
 
 (defonce init
