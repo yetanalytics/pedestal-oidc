@@ -76,57 +76,60 @@
 
 (re-frame/reg-fx
  ::init-fx
- (fn [{:keys [config
+ (fn [{:keys [config]}]
+   (swap! user-manager init! config)))
 
-              callback-type ;; nilable :login :logout
-              login-query-string ;; Query String, REQUIRED for login
+(defn- throw-not-initialized!
+  []
+  (throw (ex-info "UserManager not Initialized!"
+                  {:type ::user-manager-not-initialized})))
 
-              auto-login
+(defn- get-user-manager
+  []
+  (if-some [user-manager @user-manager]
+    user-manager
+    (throw-not-initialized!)))
 
-              after-login
-              catch-login
-              after-logout
-              catch-logout]}]
-   (let [manager (swap! user-manager init! config)]
-     (case callback-type
-       :login
-       (-> manager
-           (.signinRedirectCallback login-query-string)
-           (handle-promise after-login catch-login))
-       :logout
-       (-> (.signoutRedirectCallback manager)
-           (handle-promise after-logout catch-logout))
-       ;; If a user is present, reflect in the db
-       (-> manager
-           .getUser
-           (.then
-            (fn [?user]
-              (if ?user
-                (re-frame/dispatch [::user-loaded ?user])
-                (when auto-login
-                  (re-frame/dispatch [::login]))))))))))
+(re-frame/reg-fx
+ ::get-user-fx
+ (fn [{:keys [on-success
+              on-failure]}]
+   (-> (get-user-manager)
+       .getUser
+       (handle-promise on-success on-failure))))
 
 (re-frame/reg-fx
  ::signin-redirect-fx
- (fn [{:keys [then-fn
-              catch-fn]}]
-   (if-some [user-manager @user-manager]
-     (handle-promise (.signinRedirect user-manager)
-                     then-fn
-                     catch-fn)
-     (throw (ex-info "UserManager not Initialized!"
-                     {:type ::user-manager-not-initialized})))))
+ (fn [{:keys [on-success
+              on-failure]}]
+   (-> (get-user-manager)
+       .signinRedirect
+       (handle-promise on-success on-failure))))
+
+(re-frame/reg-fx
+ ::signin-redirect-callback-fx
+ (fn [{:keys [on-success
+              on-failure
+              query-string]}]
+   (-> (get-user-manager)
+       (.signinRedirectCallback query-string)
+       (handle-promise on-success on-failure))))
 
 (re-frame/reg-fx
  ::signout-redirect-fx
- (fn [{:keys [then-fn
-              catch-fn]}]
-   (if-some [user-manager @user-manager]
-     (handle-promise (.signoutRedirect user-manager)
-                     then-fn
-                     catch-fn)
-     (throw (ex-info "UserManager not Initialized!"
-                     {:type ::user-manager-not-initialized})))))
+ (fn [{:keys [on-success
+              on-failure]}]
+   (-> (get-user-manager)
+       .signoutRedirect
+       (handle-promise on-success on-failure))))
+
+(re-frame/reg-fx
+ ::signout-redirect-callback-fx
+ (fn [{:keys [on-success
+              on-failure]}]
+   (-> (get-user-manager)
+       .signoutRedirectCallback
+       (handle-promise on-success on-failure))))
 
 (re-frame/reg-event-db
  ::user-loaded
@@ -179,7 +182,7 @@
  ::login
  (fn [{:keys [db]} _]
    (if-not (= :loaded (::status db))
-     {::signin-redirect-fx {:then-fn #(println "signin redirect complete")}}
+     {::signin-redirect-fx {}}
      {})))
 
 ;; Set login callback key + qstring
@@ -199,7 +202,7 @@
  ::logout
  (fn [{:keys [db]} _]
    (if (= :loaded (::status db))
-     {::signout-redirect-fx {:then-fn #(println "signout redirect complete")}}
+     {::signout-redirect-fx {}}
      {})))
 
 ;; Set logout callback key
@@ -219,19 +222,31 @@
  (fn [{{:keys [status]
         ?callback ::callback
         ?qstring ::login-query-string
-        :as db} :db} [_ re-oidc-config]]
+        :as db} :db} [_ {:keys [config
+                                auto-login
+                                after-login
+                                after-logout]}]]
    (if status
      {}
      {:db (-> db
               (assoc ::status :init)
               (dissoc ::callback
                       ::login-query-string))
-      ::init-fx
-      (merge re-oidc-config
-             (when ?callback
-               {:callback-type ?callback})
-             (when ?qstring
-               {:login-query-string ?qstring}))})))
+      :fx [[::init-fx
+            {:config config}]
+           (case ?callback
+             :login [::signin-redirect-callback-fx
+                     {:query-string ?qstring
+                      :on-success after-login}]
+             :logout [::signout-redirect-callback-fx
+                      {:on-success after-logout}]
+             [::get-user-fx
+              {:on-success (fn [?user]
+                             (if ?user
+                               (re-frame/dispatch [::user-loaded ?user])
+                               (when auto-login
+                                 (re-frame/dispatch [::login]))))
+               }])]})))
 
 
 ;; Subs
