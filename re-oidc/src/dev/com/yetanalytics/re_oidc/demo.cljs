@@ -98,9 +98,8 @@
     (case hsh
       "#callback.login" (re-frame/dispatch
                          [::re-oidc/login-callback js/window.location.search])
-      "#callback.logout" (do (println "logout detect")
-                             (re-frame/dispatch
-                              [::re-oidc/logout-callback]))
+      "#callback.logout" (re-frame/dispatch
+                          [::re-oidc/logout-callback])
       nil)))
 
 ;; conditionally start your application based on the presence of an "app" element
