@@ -24,25 +24,25 @@
   (atom nil))
 
 (defn- dispatch-cb
-  [k]
+  [qvec]
   (fn [& args]
-    (re-frame/dispatch (into [k] args))))
+    (re-frame/dispatch (into qvec args))))
 
 (defn reg-events!
   "Register event callbacks to re-frame on the OIDC UserManager"
   [^UserManager user-manager]
   (doto user-manager.events
     (.addUserLoaded
-     (dispatch-cb ::user-loaded))
+     (dispatch-cb [::user-loaded]))
     (.addUserUnloaded
-     (dispatch-cb ::user-unloaded))
+     (dispatch-cb [::user-unloaded]))
     ;; We set automaticSilentRenew to true and these are done for us
     #_(.addAccessTokenExpiring
      (dispatch-cb ::access-token-expiring))
     #_(.addAccessTokenExpired
      (dispatch-cb ::access-token-expired))
     (.addSilentRenewError
-     (dispatch-cb ::silent-renew-error))
+     (dispatch-cb [::silent-renew-error]))
     ;; session monitoring requires an iframe
     ;; this breaks Figwheel and makes dev hard
     ;; TODO: enable on-demand for those with iframe-friendly idp settings
@@ -64,9 +64,9 @@
 
 (defn- cb-fn-or-dispatch
   [x]
-  (if (keyword? x)
-    (dispatch-cb x)
-    x))
+  (cond
+    (vector? x) (dispatch-cb x)
+    (fn? x) x))
 
 (re-frame/reg-fx
  ::init-fx
