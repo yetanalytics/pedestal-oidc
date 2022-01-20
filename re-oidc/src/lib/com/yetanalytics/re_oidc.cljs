@@ -174,20 +174,9 @@
 ;; "Public" API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Get the UserManager for customization
-(re-frame/reg-cofx
- ::user-manager
- (fn [cofx _]
-   (assoc cofx ::user-manager @user-manager)))
+;; Pre-initialization events
 
-(re-frame/reg-event-fx
- ::login
- (fn [{:keys [db]} _]
-   (if-not (= :loaded (::status db))
-     {::signin-redirect-fx {}}
-     {})))
-
-;; Set login callback key + qstring
+;; Add login redirect callback state, usually from routing
 (re-frame/reg-event-db
  ::login-callback
  (fn [db [_ qstring]]
@@ -199,15 +188,7 @@
             ::callback :login
             ::login-query-string qstring))))
 
-
-(re-frame/reg-event-fx
- ::logout
- (fn [{:keys [db]} _]
-   (if (= :loaded (::status db))
-     {::signout-redirect-fx {}}
-     {})))
-
-;; Set logout callback key
+;; Add logout redirect callback state, usually from routing
 (re-frame/reg-event-db
  ::logout-callback
  (fn [db _]
@@ -218,7 +199,9 @@
      (assoc db
             ::callback :logout))))
 
-;; Initialize the user manager
+;; Initialization
+;; Sets up the OIDC client from config and queues login/logout callback
+;; Or if not on a callback, attempts to get the user from storage
 (re-frame/reg-event-fx
  ::init
  (fn [{{:keys [status]
@@ -250,6 +233,29 @@
                                  (re-frame/dispatch [::login]))))
                }])]})))
 
+;; Post-initialization
+
+;; Get the UserManager for customization, if it is initialized
+(re-frame/reg-cofx
+ ::user-manager
+ (fn [cofx _]
+   (assoc cofx ::user-manager @user-manager)))
+
+;; Trigger the login redirect from a user interaction
+(re-frame/reg-event-fx
+ ::login
+ (fn [{:keys [db]} _]
+   (if-not (= :loaded (::status db))
+     {::signin-redirect-fx {}}
+     {})))
+
+;; Trigger the logout redirect from a user interaction
+(re-frame/reg-event-fx
+ ::logout
+ (fn [{:keys [db]} _]
+   (if (= :loaded (::status db))
+     {::signout-redirect-fx {}}
+     {})))
 
 ;; Subs
 (re-frame/reg-sub
