@@ -53,7 +53,6 @@
     #_(.addUserSessionChanged
      (dispatch-cb ::user-session-changed))))
 
-
 (defn init!
   "Initialize the OIDC UserManager from config. Idempotent"
   [user-manager config]
@@ -67,6 +66,13 @@
   (cond
     (vector? x) (dispatch-cb x)
     (fn? x) x))
+
+(defn- handle-promise
+  "Handle a promise result from the lib"
+  [p & [?on-success ?on-failure]]
+  (cond-> p
+    ?on-failure (.catch (cb-fn-or-dispatch ?on-failure))
+    ?on-success (.then (cb-fn-or-dispatch ?on-success))))
 
 (re-frame/reg-fx
  ::init-fx
@@ -86,22 +92,10 @@
        :login
        (-> manager
            (.signinRedirectCallback login-query-string)
-           (cond->
-               catch-login
-             (.catch (cb-fn-or-dispatch
-                      catch-login))
-             after-login
-             (.then (cb-fn-or-dispatch
-                     after-login))))
+           (handle-promise after-login catch-login))
        :logout
        (-> (.signoutRedirectCallback manager)
-           (cond->
-               catch-logout
-             (.catch (cb-fn-or-dispatch
-                      catch-logout))
-             after-logout
-             (.then (cb-fn-or-dispatch
-                     after-logout))))
+           (handle-promise after-logout catch-logout))
        ;; If a user is present, reflect in the db
        (-> manager
            .getUser
@@ -117,9 +111,9 @@
  (fn [{:keys [then-fn
               catch-fn]}]
    (if-some [user-manager @user-manager]
-     (cond-> (.signinRedirect user-manager)
-       catch-fn (.catch catch-fn)
-       then-fn (.then then-fn))
+     (handle-promise (.signinRedirect user-manager)
+                     then-fn
+                     catch-fn)
      (throw (ex-info "UserManager not Initialized!"
                      {:type ::user-manager-not-initialized})))))
 
@@ -128,9 +122,9 @@
  (fn [{:keys [then-fn
               catch-fn]}]
    (if-some [user-manager @user-manager]
-     (cond-> (.signoutRedirect user-manager)
-       catch-fn (.catch catch-fn)
-       then-fn (.then then-fn))
+     (handle-promise (.signoutRedirect user-manager)
+                     then-fn
+                     catch-fn)
      (throw (ex-info "UserManager not Initialized!"
                      {:type ::user-manager-not-initialized})))))
 
