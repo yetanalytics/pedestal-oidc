@@ -59,7 +59,6 @@
 
               callback-type ;; nilable :login :logout
               login-query-string ;; Query String, REQUIRED for login
-              logout-url ;; optional for logout
 
               auto-login
 
@@ -80,9 +79,7 @@
              (.then (cb-fn-or-dispatch
                      after-login))))
        :logout
-       (-> (if (not-empty logout-url)
-             (.signoutRedirectCallback manager logout-url)
-             (.signoutRedirectCallback manager))
+       (-> (.signoutRedirectCallback manager)
            (cond->
                catch-logout
              (.catch (cb-fn-or-dispatch
