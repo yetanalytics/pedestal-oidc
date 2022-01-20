@@ -134,27 +134,29 @@
 (re-frame/reg-event-db
  ::user-loaded
  (fn [db [_ js-user]]
-   (let [id-token (.-id_token js-user)
-         access-token (.-access_token js-user)
-         expires-at (.-expires_at js-user)
-         refresh-token (.-refresh_token js-user)
-         token-type (.-token_type js-user)
-         state (.-state js-user)
-         session-state (.-session_state js-user)
-         scope (.-scope js-user)
-         profile (js->clj (.-profile js-user))]
-     (assoc db
-            ::status :loaded
-            ::user
-            {:id-token id-token
-             :access-token access-token
-             :refresh-token refresh-token
-             :expires-at expires-at
-             :token-type token-type
-             :state state
-             :scope scope
-             :session-state session-state
-             :profile profile}))))
+   (if js-user
+     (let [id-token (.-id_token js-user)
+           access-token (.-access_token js-user)
+           expires-at (.-expires_at js-user)
+           refresh-token (.-refresh_token js-user)
+           token-type (.-token_type js-user)
+           state (.-state js-user)
+           session-state (.-session_state js-user)
+           scope (.-scope js-user)
+           profile (js->clj (.-profile js-user))]
+       (assoc db
+              ::status :loaded
+              ::user
+              {:id-token id-token
+               :access-token access-token
+               :refresh-token refresh-token
+               :expires-at expires-at
+               :token-type token-type
+               :state state
+               :scope scope
+               :session-state session-state
+               :profile profile}))
+     db)))
 
 (re-frame/reg-event-db
  ::user-unloaded
