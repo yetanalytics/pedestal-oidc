@@ -13,12 +13,26 @@
 (s/def ::callback #{:login :logout})
 (s/def ::login-query-string string?)
 
+(s/def :com.yetanalytics.re-oidc.error/name string?)
+(s/def :com.yetanalytics.re-oidc.error/message string?)
+(s/def :com.yetanalytics.re-oidc.error/handler qualified-keyword?)
+(s/def :com.yetanalytics.re-oidc.error/ex-data qualified-keyword?)
+
+(s/def ::error
+  (s/keys :req-un [:com.yetanalytics.re-oidc.error/name
+                   :com.yetanalytics.re-oidc.error/message
+                   :com.yetanalytics.re-oidc.error/handler]
+          :opt-un [:com.yetanalytics.re-oidc.error/ex-data]))
+
+(s/def ::errors (s/every ::error))
+
 ;; A (partial) spec for what re-oidc puts in the re-frame db
 (def partial-db-spec
   (s/keys :opt [::status
                 ::user
                 ::callback
-                ::login-query-string]))
+                ::login-query-string
+                ::errors]))
 
 (defonce user-manager
   (atom nil))
@@ -94,42 +108,72 @@
  ::get-user-fx
  (fn [{:keys [on-success
               on-failure]}]
-   (-> (get-user-manager)
-       .getUser
-       (handle-promise on-success on-failure))))
+   (let [on-failure (or on-failure
+                        [::add-error ::get-user-fx])]
+     (-> (get-user-manager)
+         .getUser
+         (handle-promise on-success on-failure)))))
 
 (re-frame/reg-fx
  ::signin-redirect-fx
  (fn [{:keys [on-success
               on-failure]}]
-   (-> (get-user-manager)
-       .signinRedirect
-       (handle-promise on-success on-failure))))
+   (let [on-failure (or on-failure
+                        [::add-error ::signin-redirect-fx])]
+     (-> (get-user-manager)
+         .signinRedirect
+         (handle-promise on-success on-failure)))))
 
 (re-frame/reg-fx
  ::signin-redirect-callback-fx
  (fn [{:keys [on-success
               on-failure
               query-string]}]
-   (-> (get-user-manager)
-       (.signinRedirectCallback query-string)
-       (handle-promise on-success on-failure))))
+   (let [on-failure (or on-failure
+                        [::add-error ::signin-redirect-callback-fx])
+         um (get-user-manager)]
+     (-> um
+         (.signinRedirectCallback query-string)
+         (handle-promise on-success on-failure)
+         (.then #(.clearStaleState um))))))
 
 (re-frame/reg-fx
  ::signout-redirect-fx
  (fn [{:keys [on-success
               on-failure]}]
-   (-> (get-user-manager)
-       .signoutRedirect
-       (handle-promise on-success on-failure))))
+   (let [on-failure (or on-failure
+                        [::add-error ::signout-redirect-fx])]
+     (-> (get-user-manager)
+         .signoutRedirect
+         (handle-promise on-success on-failure)))))
 
 (re-frame/reg-fx
  ::signout-redirect-callback-fx
  (fn [{:keys [on-success
               on-failure]}]
-   (-> (get-user-manager)
-       .signoutRedirectCallback
-       (handle-promise on-success on-failure))))
+   (let [on-failure (or on-failure
+                        [::add-error ::signout-redirect-callback-fx])]
+     (-> (get-user-manager)
+         .signoutRedirectCallback
+         (handle-promise on-success on-failure)))))
+
+(defn- js-error->clj
+  [handler-id js-error]
+  (let [?exd (ex-data js-error)]
+    (cond-> {:name (.-name js-error)
+             :message (ex-message js-error)
+             :handler handler-id}
+      ?exd (assoc :ex-data ?exd))))
+
+(re-frame/reg-event-db
+ ::add-error
+ (fn [db [_ handler-id js-error]]
+   (update db
+           :errors
+           (fnil conj [])
+           (js-error->clj
+            handler-id
+            js-error))))
 
 (re-frame/reg-event-db
  ::user-loaded
@@ -209,8 +253,12 @@
         ?qstring ::login-query-string
         :as db} :db} [_ {:keys [config
                                 auto-login
-                                after-login
-                                after-logout]}]]
+                                on-login-success
+                                on-login-failure
+                                on-logout-success
+                                on-logout-failure
+                                on-get-user-success
+                                on-get-user-failure]}]]
    (if status
      {}
      {:db (-> db
@@ -222,16 +270,21 @@
            (case ?callback
              :login [::signin-redirect-callback-fx
                      {:query-string ?qstring
-                      :on-success after-login}]
+                      :on-success on-login-success
+                      :on-failure on-login-failure}]
              :logout [::signout-redirect-callback-fx
-                      {:on-success after-logout}]
+                      {:on-success on-logout-success
+                       :on-failure on-logout-failure}]
              [::get-user-fx
-              {:on-success (fn [?user]
-                             (if ?user
-                               (re-frame/dispatch [::user-loaded ?user])
-                               (when auto-login
-                                 (re-frame/dispatch [::login]))))
-               }])]})))
+              ;; We need to set the user, if present, no matter what
+              {:on-success (cond-> (fn [?user]
+                                     (if ?user
+                                       (re-frame/dispatch [::user-loaded ?user])
+                                       (when auto-login
+                                         (re-frame/dispatch [::login]))))
+                             on-get-user-success
+                             (juxt (cb-fn-or-dispatch on-get-user-success)))
+               :on-failure on-get-user-failure}])]})))
 
 ;; Post-initialization
 
@@ -267,6 +320,12 @@
  ::user
  (fn [db _]
    (::user db)))
+
+(re-frame/reg-sub
+ ::user/profile
+ :<- [::user]
+ (fn [user _]
+   (:profile user)))
 
 (re-frame/reg-sub
  ::logged-in?

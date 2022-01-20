@@ -47,8 +47,10 @@
             ;; These config options are passed directly to the OIDC client
             config
             :auto-login false
-            :after-login #(push-state "/") ;; takes fn or dispatch vec
-            :after-logout #(push-state "/")}]]]}))
+            :on-login-success #(push-state "/") ;; takes fn or dispatch vec
+            :on-logout-success #(push-state "/")
+            ;; Will get the raw result of the .getUser call, nil if logged out
+            :on-get-user-success #(.log js/console "js user:" %)}]]]}))
 
 (re-frame/reg-event-fx
  ::fail-oidc-config
