@@ -1,4 +1,5 @@
 (ns ^:figwheel-hooks com.yetanalytics.re-oidc.demo
+  "In this example, we initialize re-oidc from a remote config file"
   (:require
    [goog.dom :as gdom]
    [reagent.core :as reagent :refer [atom]]
@@ -16,6 +17,7 @@
  (fn [_ _]
    {}))
 
+;; Fetch the OIDC config from a server
 (re-frame/reg-event-fx
  ::get-oidc-config!
  (fn [{:keys [db]} _]
@@ -34,6 +36,7 @@
               js/document.title
               path))
 
+;; Receive the OIDC config and initialize
 (re-frame/reg-event-fx
  ::recv-oidc-config
  (fn [ctx [_ config]]
@@ -44,7 +47,7 @@
             ;; These config options are passed directly to the OIDC client
             config
             :auto-login false
-            :after-login #(push-state "/") ;; takes fn or dispatch key
+            :after-login #(push-state "/") ;; takes fn or dispatch vec
             :after-logout #(push-state "/")}]]]}))
 
 (re-frame/reg-event-fx
@@ -53,7 +56,7 @@
    (.error js/console "Failed to fetch OIDC config, status:" status)
    {}))
 
-;; Compose init events for the demo db + OIDC's user manager
+;; Compose init events for the demo db & getting remote config
 (re-frame/reg-event-fx
  ::init!
  (fn [_ _]
@@ -61,11 +64,13 @@
          ;; Fetch the OIDC config, initializing the UserManager on success
          [:dispatch [::get-oidc-config!]]]}))
 
+;; A simple sub to see the DB
 (re-frame/reg-sub
  ::db-debug
  (fn [db _]
-   db))
-
+   (-> db
+       pp/pprint
+       with-out-str)))
 
 (defn get-app-element []
   (gdom/getElement "app"))
@@ -73,13 +78,19 @@
 (defn hello-world []
   [:div
    [:h2 "DEMO"]
-   [:pre (with-out-str
-           (pp/pprint
-            @(re-frame/subscribe [::db-debug])))]
-   (if @(re-frame/subscribe [::re-oidc/logged-in?])
-     [:button
-      {:on-click #(re-frame/dispatch [::re-oidc/logout])}
-      "Log out"]
+   [:p
+    (if @(re-frame/subscribe [::re-oidc/logged-in?])
+      "You are logged in"
+      "You are logged out")]
+   [:pre @(re-frame/subscribe [::db-debug])]
+   ;; Since the login/logout actions must run after init,
+   ;; you can use the ::re-oidc/status key for things like loading
+   (case @(re-frame/subscribe [::re-oidc/status])
+     nil [:button "Loading..."]
+     :loaded [:button
+              {:on-click #(re-frame/dispatch [::re-oidc/logout])}
+              "Log out"]
+     ;; :init/:unloaded
      [:button
       {:on-click #(re-frame/dispatch [::re-oidc/login])}
       "Log in"])])
