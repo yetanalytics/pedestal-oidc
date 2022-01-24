@@ -175,38 +175,30 @@
             handler-id
             js-error))))
 
-(defn- expired?
-  [expires-at]
-  (< (* expires-at 1000) (.now js/Date)))
-
-(re-frame/reg-event-fx
+(re-frame/reg-event-db
  ::user-loaded
- (fn [{:keys [db]} [_ js-user]]
-   (if js-user
-     (let [id-token (.-id_token js-user)
-           access-token (.-access_token js-user)
-           expires-at (.-expires_at js-user)
-           refresh-token (.-refresh_token js-user)
-           token-type (.-token_type js-user)
-           state (.-state js-user)
-           session-state (.-session_state js-user)
-           scope (.-scope js-user)
-           profile (js->clj (.-profile js-user))]
-       (if (expired? expires-at)
-         {:dispatch [::user-unloaded]}
-         {:db (assoc db
-                     ::status :loaded
-                     ::user
-                     {:id-token id-token
-                      :access-token access-token
-                      :refresh-token refresh-token
-                      :expires-at expires-at
-                      :token-type token-type
-                      :state state
-                      :scope scope
-                      :session-state session-state
-                      :profile profile})}))
-     db)))
+ (fn [db [_ js-user]]
+   (let [id-token (.-id_token js-user)
+         access-token (.-access_token js-user)
+         expires-at (.-expires_at js-user)
+         refresh-token (.-refresh_token js-user)
+         token-type (.-token_type js-user)
+         state (.-state js-user)
+         session-state (.-session_state js-user)
+         scope (.-scope js-user)
+         profile (js->clj (.-profile js-user))]
+     (assoc db
+            ::status :loaded
+            ::user
+            {:id-token id-token
+             :access-token access-token
+             :refresh-token refresh-token
+             :expires-at expires-at
+             :token-type token-type
+             :state state
+             :scope scope
+             :session-state session-state
+             :profile profile}))))
 
 (re-frame/reg-event-db
  ::user-unloaded
@@ -279,6 +271,10 @@
               (name ?status))
        {}))))
 
+(defn- expired?
+  [expires-at]
+  (< (* expires-at 1000) (.now js/Date)))
+
 ;; Initialization
 ;; Sets up the OIDC client from config and queues login/logout callback
 ;; Or if not on a callback, attempts to get the user from storage
@@ -313,13 +309,19 @@
                        :on-failure on-logout-failure}]
              [::get-user-fx
               ;; We need to set the user, if present, no matter what
-              {:on-success (cond-> (fn [?user]
-                                     (if ?user
-                                       (re-frame/dispatch [::user-loaded ?user])
-                                       (when auto-login
-                                         (re-frame/dispatch [::login]))))
-                             on-get-user-success
-                             (juxt (cb-fn-or-dispatch on-get-user-success)))
+              {:on-success
+               (cond-> (fn [?user]
+                         (if-let [logged-in-user (and ?user
+                                                      (not
+                                                       (some-> ?user
+                                                               .-expires_at
+                                                               expired?))
+                                                      ?user)]
+                           (re-frame/dispatch [::user-loaded logged-in-user])
+                           (when auto-login
+                             (re-frame/dispatch [::login]))))
+                 on-get-user-success
+                 (juxt (cb-fn-or-dispatch on-get-user-success)))
                :on-failure on-get-user-failure}])]})))
 
 ;; Post-initialization
