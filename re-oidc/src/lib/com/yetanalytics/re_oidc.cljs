@@ -175,9 +175,13 @@
             handler-id
             js-error))))
 
-(re-frame/reg-event-db
+(defn- expired?
+  [expires-at]
+  (< (* expires-at 1000) (.now js/Date)))
+
+(re-frame/reg-event-fx
  ::user-loaded
- (fn [db [_ js-user]]
+ (fn [{:keys [db]} [_ js-user]]
    (if js-user
      (let [id-token (.-id_token js-user)
            access-token (.-access_token js-user)
@@ -188,18 +192,20 @@
            session-state (.-session_state js-user)
            scope (.-scope js-user)
            profile (js->clj (.-profile js-user))]
-       (assoc db
-              ::status :loaded
-              ::user
-              {:id-token id-token
-               :access-token access-token
-               :refresh-token refresh-token
-               :expires-at expires-at
-               :token-type token-type
-               :state state
-               :scope scope
-               :session-state session-state
-               :profile profile}))
+       (if (expired? expires-at)
+         {:dispatch [::user-unloaded]}
+         {:db (assoc db
+                     ::status :loaded
+                     ::user
+                     {:id-token id-token
+                      :access-token access-token
+                      :refresh-token refresh-token
+                      :expires-at expires-at
+                      :token-type token-type
+                      :state state
+                      :scope scope
+                      :session-state session-state
+                      :profile profile})}))
      db)))
 
 (re-frame/reg-event-db
@@ -233,16 +239,19 @@
                       qstring
                       {:keys [on-login-success
                               on-login-failure]}]]
-   (case ?status
+   (cond
      ;; Pre-init
-     nil {:db (assoc db
-                     ::callback :login
-                     ::login-query-string qstring)}
-     :init {:db db
-            :fx [[::signin-redirect-callback-fx
-                  {:query-string qstring
-                   :on-success on-login-success
-                   :on-failure on-login-failure}]]}
+     (nil? ?status) {:db (assoc db
+                                ::callback :login
+                                ::login-query-string qstring)}
+     (#{:init
+        :unloaded}
+      ?status) {:db db
+                :fx [[::signin-redirect-callback-fx
+                      {:query-string qstring
+                       :on-success on-login-success
+                       :on-failure on-login-failure}]]}
+     :else
      (do
        (.warn js/console
               "::re-oidc/login-callback called with unknown status"
