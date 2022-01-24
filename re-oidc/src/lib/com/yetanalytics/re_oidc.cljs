@@ -52,20 +52,20 @@
      (dispatch-cb [::user-unloaded]))
     ;; We set automaticSilentRenew to true and these are done for us
     #_(.addAccessTokenExpiring
-     (dispatch-cb ::access-token-expiring))
-    #_(.addAccessTokenExpired
-     (dispatch-cb ::access-token-expired))
+     (dispatch-cb [::access-token-expiring]))
+    (.addAccessTokenExpired
+     (dispatch-cb [::access-token-expired]))
     (.addSilentRenewError
      (dispatch-cb [::silent-renew-error]))
     ;; session monitoring requires an iframe
     ;; this breaks Figwheel and makes dev hard
     ;; TODO: enable on-demand for those with iframe-friendly idp settings
     #_(.addUserSignedIn
-     (dispatch-cb ::user-signed-in))
+     (dispatch-cb [::user-signed-in]))
     #_(.addUserSignedOut
-     (dispatch-cb ::user-signed-out))
+     (dispatch-cb [::user-signed-out]))
     #_(.addUserSessionChanged
-     (dispatch-cb ::user-session-changed))))
+     (dispatch-cb [::user-session-changed]))))
 
 (defn init!
   "Initialize the OIDC UserManager from config. Idempotent"
@@ -211,6 +211,11 @@
 
 (re-frame/reg-event-fx
  ::silent-renew-error
+ (fn [_ [_ err]]
+   {:fx [[:dispatch [::user-unloaded]]]}))
+
+(re-frame/reg-event-fx
+ ::access-token-expired
  (fn [_ [_ err]]
    {:fx [[:dispatch [::user-unloaded]]]}))
 
