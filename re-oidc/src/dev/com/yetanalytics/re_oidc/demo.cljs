@@ -11,6 +11,20 @@
    [clojure.pprint :as pp]
    [ajax.core :as ajax]))
 
+(defn- push-state
+  "Push history state to clean up on login/logout"
+  [path]
+  (.pushState js/window.history
+              (clj->js {})
+              js/document.title
+              path))
+
+;; config for re-oidc that won't change, isn't loaded dynamically
+(def static-config
+  {:auto-login false
+   :on-login-success #(push-state "/")
+   :on-logout-success #(push-state "/")})
+
 ;; Init the demo's DB
 (re-frame/reg-event-db
  ::init-db
@@ -28,14 +42,6 @@
                  :on-success [::recv-oidc-config]
                  :on-failure [::fail-oidc-config]}}))
 
-(defn- push-state
-  "Push history state to clean up on login/logout"
-  [path]
-  (.pushState js/window.history
-              (clj->js {})
-              js/document.title
-              path))
-
 ;; Receive the OIDC config and initialize
 (re-frame/reg-event-fx
  ::recv-oidc-config
@@ -43,14 +49,10 @@
    {:fx [[:dispatch
           ;; Initialize OIDC from the remote config
           [::re-oidc/init
-           {:config
-            ;; These config options are passed directly to the OIDC client
-            config
-            :auto-login false
-            :on-login-success #(push-state "/") ;; takes fn or dispatch vec
-            :on-logout-success #(push-state "/")
-            ;; Will get the raw result of the .getUser call, nil if logged out
-            :on-get-user-success #(.log js/console "js user:" %)}]]]}))
+           (assoc static-config
+                  ;; These config options are passed directly to the OIDC client
+                  :config
+                  config)]]]}))
 
 (re-frame/reg-event-fx
  ::fail-oidc-config
@@ -77,6 +79,20 @@
 (defn get-app-element []
   (gdom/getElement "app"))
 
+(defn process-callbacks!
+  "Detect post login/logout callbacks and issue route dispatch to re-oidc."
+  [& _]
+  (let [hsh js/window.location.hash]
+    (case hsh
+      "#callback.login" (re-frame/dispatch
+                         [::re-oidc/login-callback
+                          js/window.location.search
+                          static-config])
+      "#callback.logout" (re-frame/dispatch
+                          [::re-oidc/logout-callback
+                           static-config])
+      nil)))
+
 (defn hello-world []
   [:div
    [:h2 "DEMO"]
@@ -84,6 +100,12 @@
     (if @(re-frame/subscribe [::re-oidc/logged-in?])
       "You are logged in"
       "You are logged out")]
+   (let [hsh js/window.location.hash]
+     (when (#{"#callback.login"
+              "#callback.logout"} hsh)
+       [:button
+        {:on-click process-callbacks!}
+        (str "process callback for: " hsh)]))
    [:pre @(re-frame/subscribe [::db-debug])]
    ;; Since the login/logout actions must run after init,
    ;; you can use the ::re-oidc/status key for things like loading
@@ -104,20 +126,8 @@
   (when-let [el (get-app-element)]
     (mount el)))
 
-(defn detect-callbacks!
-  "Detetct post login/logout callbacks and issue route dispatch to re-oidc."
-  []
-  (let [hsh js/window.location.hash]
-    (case hsh
-      "#callback.login" (re-frame/dispatch
-                         [::re-oidc/login-callback js/window.location.search])
-      "#callback.logout" (re-frame/dispatch
-                          [::re-oidc/logout-callback])
-      nil)))
-
 (defn init! []
   (re-frame/dispatch-sync [::init!])
-  (detect-callbacks!)
   (mount-app-element))
 
 (defonce init

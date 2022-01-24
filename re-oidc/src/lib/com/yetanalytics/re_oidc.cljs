@@ -218,30 +218,52 @@
 ;; "Public" API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Pre-initialization events
+;; (maybe) Pre-initialization events
 
 ;; Add login redirect callback state, usually from routing
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::login-callback
- (fn [db [_ qstring]]
-   (if (::status db)
+ (fn [{{?status ::status
+        :as db} :db} [_
+                      qstring
+                      {:keys [on-login-success
+                              on-login-failure]}]]
+   (case ?status
+     ;; Pre-init
+     nil {:db (assoc db
+                     ::callback :login
+                     ::login-query-string qstring)}
+     :init {:db db
+            :fx [[::signin-redirect-callback-fx
+                  {:query-string qstring
+                   :on-success on-login-success
+                   :on-failure on-login-failure}]]}
      (do
-       (.warn js/console "::re-oidc/login-callback called after UserManager init, ignored")
-       db)
-     (assoc db
-            ::callback :login
-            ::login-query-string qstring))))
+       (.warn js/console
+              "::re-oidc/login-callback called with unknown status"
+              (name ?status))
+       {}))))
 
 ;; Add logout redirect callback state, usually from routing
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::logout-callback
- (fn [db _]
-   (if (::status db)
+ (fn [{{?status ::status
+        :as db} :db} [_
+                      {:keys [on-logout-success
+                              on-logout-failure]}]]
+   (case ?status
+     ;; Pre-init
+     nil {:db (assoc db
+                     ::callback :logout)}
+     :init {:db db
+            :fx [[::signout-redirect-callback-fx
+                  {:on-success on-logout-success
+                   :on-failure on-logout-failure}]]}
      (do
-       (.warn js/console "::re-oidc/logout-callback called after UserManager init, ignored")
-       db)
-     (assoc db
-            ::callback :logout))))
+       (.warn js/console
+              "::re-oidc/logout-callback called with unknown status"
+              (name ?status))
+       {}))))
 
 ;; Initialization
 ;; Sets up the OIDC client from config and queues login/logout callback
