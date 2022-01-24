@@ -100,12 +100,6 @@
     (if @(re-frame/subscribe [::re-oidc/logged-in?])
       "You are logged in"
       "You are logged out")]
-   (let [hsh js/window.location.hash]
-     (when (#{"#callback.login"
-              "#callback.logout"} hsh)
-       [:button
-        {:on-click process-callbacks!}
-        (str "process callback for: " hsh)]))
    [:pre @(re-frame/subscribe [::db-debug])]
    ;; Since the login/logout actions must run after init,
    ;; you can use the ::re-oidc/status key for things like loading
@@ -128,6 +122,7 @@
 
 (defn init! []
   (re-frame/dispatch-sync [::init!])
+  (process-callbacks!)
   (mount-app-element))
 
 (defonce init
