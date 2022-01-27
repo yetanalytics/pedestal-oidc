@@ -45,5 +45,8 @@
   (jwt/unsign
    jwt
    (fn [{:keys [kid]}]
-     (get pkey-map kid))
+     (or (get pkey-map kid)
+         (throw (ex-info "JWT Key ID Not Found"
+                         {:type ::kid-not-found
+                          :kid kid}))))
    (merge {:alg :rs256} opts)))
