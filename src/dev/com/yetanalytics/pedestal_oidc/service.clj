@@ -11,16 +11,16 @@
 
 ;; http://0.0.0.0:8080/auth/realms/test/.well-known/openid-configuration
 
-(def oidc-config
+#_(def oidc-config
   (config/get-local "pedestal-oidc.edn"))
 
-(defn about-page
+#_(defn about-page
   [request]
   (ring-resp/response (format "Clojure %s - served from %s"
                               (clojure-version)
                               (route/url-for ::about-page))))
 
-(defn home-page
+#_(defn home-page
   [{:keys [session]}]
   (ring-resp/response
    (format
@@ -38,11 +38,25 @@
 ;; Defines "/" and "/about" routes with their associated :get handlers.
 ;; The interceptors defined after the verb map (e.g., {:get home-page}
 ;; apply to / and its children (/about).
-(def common-interceptors [(body-params/body-params)
+#_(def common-interceptors [(body-params/body-params)
                           http/html-body])
 
-;; Tabular routes
-(def routes #{["/" :get (conj common-interceptors `home-page)]
+(defn echo-claims
+  [req]
+  {:status 200
+   :headers {}
+   :body (::i/claims req)})
+
+;; Example API decoding claims
+(def routes #{["/api" :get
+               [(body-params/body-params)
+                http/json-body
+                (i/decode-interceptor
+                 :jwks-uri "http://0.0.0.0:8080/auth/realms/test/protocol/openid-connect/certs")
+                `echo-claims]]})
+
+
+#_(def routes #{["/" :get (conj common-interceptors `home-page)]
               ["/about" :get (conj common-interceptors `about-page)]
               ["/oidc/login" :get (into common-interceptors
                                         [(i/login-redirect-interceptor
@@ -112,6 +126,6 @@
                                         ;:key-password "password"
                                         ;:ssl-port 8443
                                         :ssl? false}
-              ::http/enable-session {:store
+              #_#_::http/enable-session {:store
                                      #_(cookie/cookie-store)
                                      (memory/memory-store)}})

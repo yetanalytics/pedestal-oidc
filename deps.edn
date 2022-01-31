@@ -1,9 +1,8 @@
 {:paths ["src/lib" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         io.pedestal/pedestal.service {:mvn/version "0.5.9"}
-        no.nsd/clj-jwt
-        {:git/url "https://gitlab.nsd.no/clojure/clj-jwt.git"
-         :git/sha "bc23acb3c7cbf0d2def2d395c3e3d9c405be28d5"}
+        buddy/buddy-sign {:mvn/version "3.4.333"}
+        org.clojure/tools.logging {:mvn/version "1.2.4"}
         http-kit/http-kit {:mvn/version "2.6.0-alpha1"}
         ring/ring-codec {:mvn/version "1.2.0"}
         cheshire/cheshire {:mvn/version "5.10.1"}

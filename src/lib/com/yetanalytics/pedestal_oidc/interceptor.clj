@@ -1,6 +1,5 @@
 (ns com.yetanalytics.pedestal-oidc.interceptor
   (:require [clojure.spec.alpha :as s]
-            [no.nsd.clj-jwt :as clj-jwt]
             [io.pedestal.interceptor :as i]
             [io.pedestal.log :as log]
             [com.yetanalytics.pedestal-oidc.response :as resp]
@@ -12,11 +11,13 @@
             [com.yetanalytics.pedestal-oidc.util :as util]
             [com.yetanalytics.pedestal-oidc.session :as session]
             [com.yetanalytics.pedestal-oidc.token :as token]
+            [com.yetanalytics.pedestal-oidc.jwt :as jwt]
             [org.httpkit.client :as client]
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [camel-snake-kebab.core :as csk]
             [clojure.tools.logging :as ctl]
+            [clojure.string :as cstr]
             [clojure.pprint :as pp]))
 
 ;; TODO: maybe async
@@ -137,7 +138,9 @@
                         id-token
                         provider
                         remote
-                        session-nonce)]
+                        session-nonce
+                        ;; TODO: account for this blocking/cache
+                        (jwt/get-jwks-pkeys jwks-uri))]
                 ;; For now, just fail on any cause
                 ;; TODO: possibly handle more gracefully
                 (do
@@ -183,31 +186,44 @@
 
 ;; adapted from https://auth0.com/blog/secure-a-clojure-web-api-with-auth0/
 
-
-
 (defn decode-interceptor
-  "Return an interceptor that decodes claims"
-  [jwks-uri
-   & {:keys [required?
+  "Given a map of valid public keys, return an interceptor that decodes claims."
+  [& {:keys [required?
              check-header
-             unauthorized]
-      :or {required? false
+             unauthorized
+             jwks-uri
+             pkey-map
+             memo-pkeys?]
+      :or {required? true
            check-header "authorization"
-           unauthorized default-unauthorized}}]
-  (i/interceptor
-   {:enter
-    (fn [ctx]
-      (if-let [auth-header (get-in ctx
-                                   [:request
-                                    :headers
-                                    check-header])]
-        (try (->> auth-header
-                  (clj-jwt/unsign jwks-uri)
-                  (assoc-in ctx [:request :claims]))
-             (catch Exception ex
-               (log/warn :msg "Unhandled exception yielded a 401")
-               (unauthorized ctx ex)))
-        (if required?
-          (unauthorized ctx)
-          ;; TODO: namespaced keyword
-          (assoc-in ctx [:request :claims] {}))))}))
+           unauthorized default-unauthorized
+           memo-pkeys? false}}]
+  (let [get-pkey-map (cond->
+                         (cond
+                           (map? pkey-map) (constantly pkey-map)
+                           (fn? pkey-map) pkey-map
+                           (and (nil? pkey-map)
+                                (not-empty jwks-uri))
+                           #(jwt/get-jwks-pkeys jwks-uri))
+                       memo-pkeys? memoize)]
+    (i/interceptor
+     {:enter
+      (fn [ctx]
+        (try
+          (if-let [auth-header (get-in ctx
+                                       [:request
+                                        :headers
+                                        check-header])]
+            (if (cstr/starts-with? auth-header "Bearer ")
+              (let [access-token (subs auth-header 7)]
+                (assoc-in ctx
+                          [:request ::claims]
+                          (jwt/unsign
+                           (get-pkey-map)
+                           access-token))))
+            (if required?
+              (unauthorized ctx)
+              ctx))
+          (catch Exception ex
+            (ctl/warn "Unhandled token decode exception yielded a 401")
+            (unauthorized ctx ex))))})))

@@ -2,7 +2,7 @@
   "Token helpers"
   (:require [clojure.spec.alpha :as s]
             [com.yetanalytics.pedestal-oidc.config :as config]
-            [no.nsd.clj-jwt :as clj-jwt]))
+            [com.yetanalytics.pedestal-oidc.jwt :as jwt]))
 
 (def invalid-cause
   #{;; From buddy-sign
@@ -24,7 +24,9 @@
          :id-token string?
          :provider ::config/provider
          :remote-config ::config/remote
-         :session-nonce string?)
+         :session-nonce string?
+         :kwargs (s/keys*
+                  :opt-un [::jwt/pkey-map]))
   :ret (s/nilable invalid-cause))
 
 (defn validate-id-token
@@ -34,14 +36,16 @@
    {:keys [client-id]}
    {:keys [issuer
            jwks-uri]}
-   session-nonce]
+   session-nonce
+   & {:keys [pkey-map]}]
   (try
-    (let [;; Unsign
+    (let [pkey-map (or pkey-map (jwt/get-jwks-pkeys jwks-uri))
+          ;; Unsign
           {:keys [iss
                   nonce
                   aud
-                  azp] :as tok} (clj-jwt/unsign
-                                 jwks-uri
+                  azp] :as tok} (jwt/unsign
+                                 pkey-map
                                  id-token
                                  {:iss issuer})]
       (cond
