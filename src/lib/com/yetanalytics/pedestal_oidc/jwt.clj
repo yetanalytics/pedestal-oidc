@@ -1,6 +1,5 @@
 (ns com.yetanalytics.pedestal-oidc.jwt
   (:require [clojure.spec.alpha :as s]
-            [com.yetanalytics.pedestal-oidc.config.remote :as remote]
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [buddy.core.keys :as bkeys]
@@ -8,15 +7,15 @@
 
 (s/def ::kid string?)
 
-(s/def ::pkey-map
+(s/def ::keyset
   (s/map-of ::kid
             bkeys/public-key?))
 
-(s/fdef get-jwks-pkeys
-  :args (s/cat :jwks-uri ::remote/jwks-uri)
-  :ret ::pkey-map)
+(s/fdef get-keyset
+  :args (s/cat :jwks-uri string?)
+  :ret ::keyset)
 
-(defn get-jwks-pkeys
+(defn get-keyset
   [jwks-uri]
   (try (-> (with-open [rdr (io/reader (io/input-stream jwks-uri))]
              (json/parse-stream rdr #(keyword nil %)))
@@ -32,20 +31,20 @@
 
 (s/fdef unsign
   :args (s/cat
-         :pkey-map ::pkey-map
+         :keyset ::keyset
          :jwt string?
          :opts (s/? map?))
   :ret map?)
 
 (defn unsign
   "Attempt to unsign a JWT token according to OIDC"
-  [pkey-map
+  [keyset
    jwt
    & [opts]]
   (jwt/unsign
    jwt
    (fn [{:keys [kid]}]
-     (or (get pkey-map kid)
+     (or (get keyset kid)
          (throw (ex-info "JWT Key ID Not Found"
                          {:type ::kid-not-found
                           :kid kid}))))
