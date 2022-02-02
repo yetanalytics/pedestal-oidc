@@ -29,7 +29,12 @@
                      :com.yetanalytics.pedestal-oidc/claims]
                     (jwt/unsign
                      keyset
-                     access-token))))
+                     access-token)))
+        ;; bad auth header
+        (if required?
+          (unauthorized ctx)
+          ctx))
+      ;; no auth header
       (if required?
         (unauthorized ctx)
         ctx))
