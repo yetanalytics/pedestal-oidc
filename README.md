@@ -4,7 +4,7 @@
 
 [![Clojars Version](https://img.shields.io/clojars/v/com.yetanalytics/pedestal-oidc)](https://clojars.org/com.yetanalytics/pedestal-oidc)
 
-This lib provides a [pedestal](https://github.com/pedestal/pedestal) interceptor for working with [OIDC](https://openid.net/connect/) tokens.
+This lib provides a [pedestal](https://github.com/pedestal/pedestal) interceptor for decoding [OIDC](https://openid.net/connect/) tokens, utilities for retrieving and unsigning (inspired by [clj-jwt](https://gitlab.nsd.no/clojure/clj-jwt)) and for performing simple OIDC discovery.
 
 ## Usage
 
