@@ -3,7 +3,8 @@
             [io.pedestal.http.route :as route]
             [io.pedestal.http.body-params :as body-params]
             [ring.util.response :as ring-resp]
-            [com.yetanalytics.pedestal-oidc.interceptor :as i]))
+            [com.yetanalytics.pedestal-oidc.interceptor :as i]
+            [com.yetanalytics.pedestal-oidc.jwt :as jwt]))
 
 ;; http://0.0.0.0:8080/auth/realms/test/.well-known/openid-configuration
 
@@ -11,14 +12,20 @@
   [req]
   {:status 200
    :headers {}
-   :body (::i/claims req)})
+   :body (:com.yetanalytics.pedestal-oidc/claims req)})
 
 ;; Example API decoding claims
 (def routes #{["/api" :get
                [(body-params/body-params)
                 http/json-body
                 (i/decode-interceptor
-                 :jwks-uri "http://0.0.0.0:8080/auth/realms/test/protocol/openid-connect/certs")
+                 ;; How you retrieve/cache the keyset is up to you
+                 ;; the interceptor gives this function the context in case
+                 ;; you need access to something in there to get it
+                 :get-keyset-fn
+                 (fn [ctx_]
+                   (jwt/get-keyset
+                    "http://0.0.0.0:8080/auth/realms/test/protocol/openid-connect/certs")))
                 `echo-claims]]})
 
 (def service {:env :prod
