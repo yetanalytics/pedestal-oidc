@@ -5,15 +5,3 @@
    :headers {}
    :body "UNAUTHORIZED"
    :session nil})
-
-(def forbidden
-  {:status 403
-   :headers {}
-   :body "FORBIDDEN"
-   :session nil})
-
-(defn redirect
-  [url]
-  {:status  302
-   :headers {"Location" url}
-   :body ""})
