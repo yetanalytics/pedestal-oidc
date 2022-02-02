@@ -3,10 +3,7 @@
         io.pedestal/pedestal.service {:mvn/version "0.5.9"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
-        http-kit/http-kit {:mvn/version "2.6.0-alpha1"}
-        ring/ring-codec {:mvn/version "1.2.0"}
-        cheshire/cheshire {:mvn/version "5.10.1"}
-        camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}}
+        cheshire/cheshire {:mvn/version "5.10.1"}}
  :aliases
  {:dev {:extra-paths ["src/dev"]
         :extra-deps {io.pedestal/pedestal.jetty {:mvn/version "0.5.9"}
