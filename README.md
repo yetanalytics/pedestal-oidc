@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/yetanalytics/pedestal-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/yetanalytics/pedestal-oidc/actions/workflows/ci.yml)
 
+[![Clojars Version](https://img.shields.io/clojars/v/com.yetanalytics/pedestal-oidc)](https://clojars.org/com.yetanalytics/pedestal-oidc)
+
 This lib provides a [pedestal](https://github.com/pedestal/pedestal) interceptor for working with [OIDC](https://openid.net/connect/) tokens.
 
 ## Usage
