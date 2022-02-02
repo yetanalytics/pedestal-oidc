@@ -7,13 +7,13 @@
 
 (s/def ::kid string?)
 
-(s/def ::pkey-map
+(s/def ::keyset
   (s/map-of ::kid
             bkeys/public-key?))
 
 (s/fdef get-keyset
   :args (s/cat :jwks-uri string?)
-  :ret ::pkey-map)
+  :ret ::keyset)
 
 (defn get-keyset
   [jwks-uri]
@@ -31,20 +31,20 @@
 
 (s/fdef unsign
   :args (s/cat
-         :pkey-map ::pkey-map
+         :keyset ::keyset
          :jwt string?
          :opts (s/? map?))
   :ret map?)
 
 (defn unsign
   "Attempt to unsign a JWT token according to OIDC"
-  [pkey-map
+  [keyset
    jwt
    & [opts]]
   (jwt/unsign
    jwt
    (fn [{:keys [kid]}]
-     (or (get pkey-map kid)
+     (or (get keyset kid)
          (throw (ex-info "JWT Key ID Not Found"
                          {:type ::kid-not-found
                           :kid kid}))))
