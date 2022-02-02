@@ -1,6 +1,5 @@
 (ns com.yetanalytics.pedestal-oidc.jwt
   (:require [clojure.spec.alpha :as s]
-            [com.yetanalytics.pedestal-oidc.config.remote :as remote]
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [buddy.core.keys :as bkeys]
@@ -12,11 +11,11 @@
   (s/map-of ::kid
             bkeys/public-key?))
 
-(s/fdef get-jwks-pkeys
-  :args (s/cat :jwks-uri ::remote/jwks-uri)
+(s/fdef get-keyset
+  :args (s/cat :jwks-uri string?)
   :ret ::pkey-map)
 
-(defn get-jwks-pkeys
+(defn get-keyset
   [jwks-uri]
   (try (-> (with-open [rdr (io/reader (io/input-stream jwks-uri))]
              (json/parse-stream rdr #(keyword nil %)))
