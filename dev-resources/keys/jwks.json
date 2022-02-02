@@ -1,0 +1,8 @@
+{
+    "keys" : [
+        {"kid" : "foo",
+         "kty" : "RSA",
+         "e" : "AQAB",
+         "n": "q7yqGK0ROv_kSqwtYFCtZh0a9LBvDHiFrvlzUGqLdNMuzNcwSXfkRhVPqCMulebhfW0S69tCRft37tm7p14DD4dR9thdc2qzelViagfIAILuFILU0KkNcn1huaPNWWBfK62Pg9oqDMK45Um6BrqX80Xmcx73yZ19zk2vI5XaQ8c"}
+    ]
+}

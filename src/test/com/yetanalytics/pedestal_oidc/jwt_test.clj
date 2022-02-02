@@ -4,6 +4,11 @@
             [buddy.core.keys :as bkeys]
             [buddy.sign.jwt :as jwt]))
 
+(deftest get-keyset-test
+  (is (=
+       {"foo" (bkeys/public-key "dev-resources/keys/pubkey.pem")}
+       (get-keyset "dev-resources/keys/jwks.json"))))
+
 (deftest unsign-test
   (let [privkey (bkeys/private-key "dev-resources/keys/privkey.pem" "insecure")
         pubkey (bkeys/public-key "dev-resources/keys/pubkey.pem")
