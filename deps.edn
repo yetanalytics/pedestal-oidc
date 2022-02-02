@@ -3,7 +3,8 @@
         io.pedestal/pedestal.service {:mvn/version "0.5.9"}
         buddy/buddy-sign {:mvn/version "3.4.333"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
-        cheshire/cheshire {:mvn/version "5.10.1"}}
+        cheshire/cheshire {:mvn/version "5.10.1"}
+        org.clojure/core.async {:mvn/version "1.5.648"}}
  :aliases
  {:dev {:extra-paths ["src/dev"]
         :extra-deps {io.pedestal/pedestal.jetty {:mvn/version "0.5.9"}

@@ -22,7 +22,6 @@
                  ;; How you retrieve/cache the keyset is up to you
                  ;; the interceptor gives this function the context in case
                  ;; you need access to something in there to get it
-                 :get-keyset-fn
                  (fn [ctx_]
                    (jwt/get-keyset
                     "http://0.0.0.0:8080/auth/realms/test/protocol/openid-connect/certs")))
