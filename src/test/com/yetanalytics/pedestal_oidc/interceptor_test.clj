@@ -34,16 +34,23 @@
     (testing "failure types"
       (let [{:keys [enter]} (decode-interceptor
                              get-keyset-fn)
-            bad-header (subs auth-header 0 233)]
+            bad-header (subs auth-header 0 233)
+            unknown-jwt (jwt/sign
+                         {:bar "baz"}
+                         privkey
+                         {:alg :rs256
+                          :header {:kid "bar"}})
+            unknown-header (format "Bearer %s" unknown-jwt)]
         (are [ctx-in failure-type]
             (= failure-type
                (get
                 (enter ctx-in)
                 :com.yetanalytics.pedestal-oidc/failure))
 
-          {:request {:headers {}}}                           :header-missing
-          {:request {:headers {"authorization" ""}}}         :header-invalid
-          {:request {:headers {"authorization" bad-header}}} :token-invalid)))
+          {:request {:headers {}}}                               :header-missing
+          {:request {:headers {"authorization" ""}}}             :header-invalid
+          {:request {:headers {"authorization" bad-header}}}     :token-invalid
+          {:request {:headers {"authorization" unknown-header}}} :kid-not-found)))
     (testing "decodes, async"
       (let [{:keys [enter]} (decode-interceptor
                              (fn [_]
