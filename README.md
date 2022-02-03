@@ -14,6 +14,18 @@ See [the demo](src/dev/com/yetanalytics/pedestal_oidc/service.clj) for a simple 
 
 Give `com.yetanalytics.pedestal-oidc.interceptor/decode-interceptor` a function that returns a map of JWKS key IDs to the keys themselves and place it in your interceptor chain. Decoded claims will be placed on the request at `:com.yetanalytics.pedestal-oidc/claims`.
 
+#### Failures
+
+By default the `decode-interceptor` will respond to any failure with a 401. You can customize this behavior by providing a `:unauthorized` keyword arg which is a function that will recieve the pedestal context, a failure keyword and possibly an exception. The possible failure keywords are:
+
+* `:header-missing` - The `Authorization` header (or whatever is provided for `check-header`) is not present. No exception.
+* `:header-invalid` - The header does not start with `Bearer `. No exception.
+* `:kid-not-found` - The indicated public key is not found by ID. An exception is passed with ex-data containing the `:kid`
+* `:validation` - The token failed unsigning with `buddy-sign`. The provided exception contains the `:cause` in its ex-data.
+* `:unknown` - An unknown exception was thrown. See the provided exception for more info.
+
+The default `:unauthorized` function will add the failure keyword to the context as `:com.yetanalytics.pedestal-oidc/failure`. By default exceptions will not be retained.
+
 ### Getting Keysets
 
 `com.yetanalytics.pedestal-oidc.jwt/get-keyset` will attempt to fetch a valid keyset from the given `jwks-uri`. How this is stored/cached is up to the lib consumer.
