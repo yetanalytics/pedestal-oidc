@@ -6,8 +6,13 @@
             [clojure.string :as cstr]
             [clojure.core.async :as a]))
 
-(defn default-unauthorized [ctx & [?ex & _]]
-  (assoc ctx :response resp/unauthorized))
+(defn default-unauthorized
+  "Default handler for any failure.
+  Will receive a failure keyword and possibly an exception"
+  [ctx failure & [?ex_]]
+  (assoc ctx
+         :response resp/unauthorized
+         :com.yetanalytics.pedestal-oidc/failure failure))
 
 ;; adapted from https://auth0.com/blog/secure-a-clojure-web-api-with-auth0/
 
@@ -24,23 +29,36 @@
                                   check-header])]
       (if (cstr/starts-with? auth-header "Bearer ")
         (let [access-token (subs auth-header 7)]
-          (assoc-in ctx
-                    [:request
-                     :com.yetanalytics.pedestal-oidc/claims]
-                    (jwt/unsign
-                     keyset
-                     access-token)))
+          (try
+            (assoc-in ctx
+                      [:request
+                       :com.yetanalytics.pedestal-oidc/claims]
+                      (jwt/unsign
+                       keyset
+                       access-token))
+            (catch clojure.lang.ExceptionInfo exi
+              (case (some-> exi
+                            ex-data
+                            :type)
+                ;; Unknown Key
+                ::jwt/kid-not-found
+                (unauthorized ctx :kid-not-found exi)
+                ;; Invalid Key per buddy-sign
+                :validation
+                (unauthorized ctx :token-invalid exi)
+                ;; Throw to top-level handling
+                (throw exi)))))
         ;; bad auth header
         (if required?
-          (unauthorized ctx)
+          (unauthorized ctx :header-invalid)
           ctx))
       ;; no auth header
       (if required?
-        (unauthorized ctx)
+        (unauthorized ctx :header-missing)
         ctx))
     (catch Exception ex
-      (log/warn "Unhandled token decode exception yielded a 401")
-      (unauthorized ctx ex))))
+      (log/warn "Unknown failure yielded a 401")
+      (unauthorized ctx :unknown ex))))
 
 (defn decode-interceptor
   "Given a function that returns a map of public keys, return an interceptor
@@ -52,9 +70,10 @@
 
   Other options:
 
-    :required? - Return a 401 unless valid claims are present
-    :unauthorized - A function that will receive the context map to handle a 401
-    :check-header - the header to check for the access token
+    :required? - Return a 401 unless valid claims are present.
+    :unauthorized - A function that will receive the context map to handle a 401,
+      a failure keyword and possibly an exception.
+    :check-header - the header to check for the access token.
   "
   [get-keyset-fn
    & {:keys [required?

@@ -32,7 +32,11 @@
                        ;; read the jwks uri
                        (get "jwks_uri")
                        ;; go get the keyset
-                       jwt/get-keyset)))
+                       jwt/get-keyset))
+
+                 ;; If you want to handle failures differently:
+                 ;; :unauthorized (fn [ctx failure & [?ex]] ...)
+                 )
                 `echo-claims]]})
 
 (def service {:env :prod

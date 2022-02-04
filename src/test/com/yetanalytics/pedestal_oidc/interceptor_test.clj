@@ -27,10 +27,30 @@
     (testing "fails 401 by default"
       (let [{:keys [enter]} (decode-interceptor
                              get-keyset-fn)]
-        (is (= {:request {:headers {"authorization" "What? Hey!"}},
-                :response
-                {:status 401, :headers {}, :body "UNAUTHORIZED", :session nil}}
-               (enter {:request {:headers {"authorization" "What? Hey!"}}})))))
+        (is (= 401
+               (get-in
+                (enter {:request {:headers {}}})
+                [:response :status])))))
+    (testing "failure types"
+      (let [{:keys [enter]} (decode-interceptor
+                             get-keyset-fn)
+            bad-header (subs auth-header 0 233)
+            unknown-jwt (jwt/sign
+                         {:bar "baz"}
+                         privkey
+                         {:alg :rs256
+                          :header {:kid "bar"}})
+            unknown-header (format "Bearer %s" unknown-jwt)]
+        (are [ctx-in failure-type]
+            (= failure-type
+               (get
+                (enter ctx-in)
+                :com.yetanalytics.pedestal-oidc/failure))
+
+          {:request {:headers {}}}                               :header-missing
+          {:request {:headers {"authorization" ""}}}             :header-invalid
+          {:request {:headers {"authorization" bad-header}}}     :token-invalid
+          {:request {:headers {"authorization" unknown-header}}} :kid-not-found)))
     (testing "decodes, async"
       (let [{:keys [enter]} (decode-interceptor
                              (fn [_]
