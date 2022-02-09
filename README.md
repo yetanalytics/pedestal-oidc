@@ -26,6 +26,24 @@ By default the `decode-interceptor` will respond to any failure with a 401. You 
 
 The default `:unauthorized` function will add the failure keyword to the context as `:com.yetanalytics.pedestal-oidc/failure`. By default exceptions will not be retained.
 
+#### Retry
+
+If you would like to retry token decoding (for instance after refreshing a cache), you can run `com.yetanalytics.pedestal-oidc/retry-decode` on the context in your `:unauthorized` function. This will re-enqueue the decode-interceptor so be sure to limit the number of retries in your calling code. For instance, to retry up to 5 times on any failure:
+
+``` clojure
+
+(fn unauthorized [{attempt ::attempt
+                   :as ctx
+                   :or {attempt 0}} failure & [?ex]]
+  (println "fail!" failure)
+  (if (< attempt 5)
+    (-> ctx
+        (update ::attempt (fnil inc 0))
+        i/retry-decode)
+    (i/default-unauthorized ctx failure ?ex)))
+
+```
+
 ### Getting Keysets
 
 `com.yetanalytics.pedestal-oidc.jwt/get-keyset` will attempt to fetch a valid keyset from the given `jwks-uri`. How this is stored/cached is up to the lib consumer.
