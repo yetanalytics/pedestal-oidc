@@ -22,6 +22,8 @@ By default the `decode-interceptor` will respond to any failure with a 401. You 
 * `:header-invalid` - The header does not start with `Bearer `. No exception.
 * `:kid-not-found` - The indicated public key is not found by ID. An exception is passed with ex-data containing the `:kid`
 * `:validation` - The token failed unsigning with `buddy-sign`. The provided exception contains the `:cause` in its ex-data.
+* `:keyset-invalid` - The keyset function failed to return a map.
+* `:keyset-error` - (sync only) the keyset function threw an unhandled error.
 * `:unknown` - An unknown exception was thrown. See the provided exception for more info.
 
 The default `:unauthorized` function will add the failure keyword to the context as `:com.yetanalytics.pedestal-oidc/failure`. By default exceptions will not be retained.
