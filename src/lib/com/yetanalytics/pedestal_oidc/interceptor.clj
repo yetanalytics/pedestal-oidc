@@ -4,7 +4,8 @@
             [com.yetanalytics.pedestal-oidc.jwt :as jwt]
             [clojure.tools.logging :as log]
             [clojure.string :as cstr]
-            [clojure.core.async :as a]))
+            [clojure.core.async :as a]
+            [io.pedestal.interceptor.chain :as chain]))
 
 (defn default-unauthorized
   "Default handler for any failure.
@@ -87,7 +88,8 @@
            async? false
            keyset-blocking? false}}]
   (i/interceptor
-   {:enter
+   {:name ::decode-interceptor
+    :enter
     (fn [ctx]
       (if async?
         (a/go
@@ -106,3 +108,21 @@
          check-header
          unauthorized
          (get-keyset-fn ctx))))}))
+
+(defn retry-decode
+  "Run this on the ctx to attempt to retry decoding. It is up to the lib
+  consumer to track attempts and limit looping."
+  [{[{i-name :name
+      i-enter :enter
+      :as i}] ::chain/stack
+    queue ::chain/queue
+    :as ctx}]
+  (if (= i-name ::decode-interceptor)
+    (-> ctx
+        (dissoc ::chain/queue)
+        (chain/enqueue
+         (cons i
+               (seq queue))))
+    (throw (ex-info "Invalid Retry"
+                    {:type ::invalid-retry
+                     :interceptor-name i-name}))))

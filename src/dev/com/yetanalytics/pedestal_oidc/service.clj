@@ -23,7 +23,7 @@
                  ;; How you retrieve/cache the config & keyset is up to you
                  ;; the interceptor gives this function the context in case
                  ;; you need access to something in there to get it
-                 (fn [ctx_]
+                 (fn [ctx]
                    (-> "http://0.0.0.0:8080/auth/realms/test" ;; the issuer
                        ;; Derive the config uri
                        disco/issuer->config-uri
@@ -35,7 +35,17 @@
                        jwt/get-keyset))
 
                  ;; If you want to handle failures differently:
-                 ;; :unauthorized (fn [ctx failure & [?ex]] ...)
+
+                 ;; :unauthorized
+                 ;; (fn [{attempt ::attempt
+                 ;;       :as ctx
+                 ;;       :or {attempt 0}} failure & [?ex]]
+                 ;;   (println "fail!" failure)
+                 ;;   (if (< attempt 5)
+                 ;;     (-> ctx
+                 ;;         (update ::attempt (fnil inc 0))
+                 ;;         i/retry-decode)
+                 ;;     (i/default-unauthorized ctx failure ?ex)))
                  )
                 `echo-claims]]})
 
