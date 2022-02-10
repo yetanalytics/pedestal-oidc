@@ -11,15 +11,26 @@
 
 (deftest unsign-test
   (let [privkey (bkeys/private-key "dev-resources/keys/privkey.pem" "insecure")
-        pubkey (bkeys/public-key "dev-resources/keys/pubkey.pem")
-        keyset {"foo" pubkey}
-        jwt (jwt/sign
-             {:bar "baz"}
-             privkey
-             {:alg :rs256
-              :header {:kid "foo"}})]
-    (is
-     (= {:bar "baz"}
-        (unsign
-         keyset
-         jwt)))))
+        pubkey (bkeys/public-key "dev-resources/keys/pubkey.pem")]
+    (testing "map keyset"
+      (is
+       (= {:bar "baz"}
+          (unsign
+           {"foo" pubkey}
+           (jwt/sign
+            {:bar "baz"}
+            privkey
+            {:alg :rs256
+             :header {:kid "foo"}})))))
+    (testing "function keyset"
+      (is
+       (= {:bar "baz"}
+          (unsign
+           (fn [kid]
+             (when (= "foo" kid)
+               pubkey))
+           (jwt/sign
+            {:bar "baz"}
+            privkey
+            {:alg :rs256
+             :header {:kid "foo"}})))))))
