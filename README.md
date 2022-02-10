@@ -12,7 +12,12 @@ See [the demo](src/dev/com/yetanalytics/pedestal_oidc/service.clj) for a simple 
 
 ### Interceptor
 
-Give `com.yetanalytics.pedestal-oidc.interceptor/decode-interceptor` a function that returns a map of JWKS key IDs to the keys themselves and place it in your interceptor chain. Decoded claims will be placed on the request at `:com.yetanalytics.pedestal-oidc/claims`.
+Give `com.yetanalytics.pedestal-oidc.interceptor/decode-interceptor` a "get-keyset" function that returns either:
+
+* a map of JWKS key IDs to the keys themselves.
+* a function that takes such an ID and (maybe) returns a key. This may be useful if you need to maintain a cache.
+
+Use the resulting interceptor in a pedestal route. Decoded claims will be placed on the request at `:com.yetanalytics.pedestal-oidc/claims`.
 
 #### Failures
 
