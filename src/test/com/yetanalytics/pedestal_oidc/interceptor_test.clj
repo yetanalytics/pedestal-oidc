@@ -50,7 +50,21 @@
           {:request {:headers {}}}                               :header-missing
           {:request {:headers {"authorization" ""}}}             :header-invalid
           {:request {:headers {"authorization" bad-header}}}     :token-invalid
-          {:request {:headers {"authorization" unknown-header}}} :kid-not-found)))
+          {:request {:headers {"authorization" unknown-header}}} :kid-not-found))
+      (testing "keyset failures"
+        (let [{:keys [enter]} (decode-interceptor
+                               #(throw (ex-info "uh oh"
+                                                {:type ::uh-oh})))]
+          (is (= :keyset-error
+                 (get
+                  (enter {:request {:headers {"authorization" auth-header}}})
+                  :com.yetanalytics.pedestal-oidc/failure))))
+        (let [{:keys [enter]} (decode-interceptor
+                               (constantly nil))]
+          (is (= :keyset-invalid
+                 (get
+                  (enter {:request {:headers {"authorization" auth-header}}})
+                  :com.yetanalytics.pedestal-oidc/failure))))))
     (testing "decodes, async"
       (let [{:keys [enter]} (decode-interceptor
                              (fn [_]

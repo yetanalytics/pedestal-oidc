@@ -91,18 +91,25 @@
     (fn [ctx]
       (if async?
         (a/go
-          (decode-enter-sync
-           ctx
-           required?
-           check-header
-           unauthorized
-           (a/<!
-            (if keyset-blocking?
-              (a/thread (get-keyset-fn ctx))
-              (get-keyset-fn ctx)))))
-        (decode-enter-sync
-         ctx
-         required?
-         check-header
-         unauthorized
-         (get-keyset-fn ctx))))}))
+          (if-some [keyset (a/<!
+                            (if keyset-blocking?
+                              (a/thread (get-keyset-fn ctx))
+                              (get-keyset-fn ctx)))]
+            (decode-enter-sync
+             ctx
+             required?
+             check-header
+             unauthorized
+             keyset)
+            (unauthorized ctx :keyset-invalid)))
+        (try
+          (if-some [keyset (get-keyset-fn ctx)]
+            (decode-enter-sync
+             ctx
+             required?
+             check-header
+             unauthorized
+             keyset)
+            (unauthorized ctx :keyset-invalid))
+          (catch Exception ex
+            (unauthorized ctx :keyset-error ex)))))}))
