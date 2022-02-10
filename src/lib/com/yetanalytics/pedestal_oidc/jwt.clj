@@ -8,8 +8,12 @@
 (s/def ::kid string?)
 
 (s/def ::keyset
-  (s/map-of ::kid
-            bkeys/public-key?))
+  (s/or :map (s/map-of ::kid
+                       bkeys/public-key?)
+        ;; Keyset can be a function that takes the :kid
+        :function (s/fspec
+                   :args (s/cat :kid ::kid)
+                   :ret (s/nilable bkeys/public-key?))))
 
 (s/fdef get-keyset
   :args (s/cat :jwks-uri string?)
@@ -44,7 +48,7 @@
   (jwt/unsign
    jwt
    (fn [{:keys [kid]}]
-     (or (get keyset kid)
+     (or (keyset kid)
          (throw (ex-info "JWT Key ID Not Found"
                          {:type ::kid-not-found
                           :kid kid}))))
