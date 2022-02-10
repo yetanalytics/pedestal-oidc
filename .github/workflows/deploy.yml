@@ -45,3 +45,9 @@ jobs:
           version: ${{ steps.version.outputs.VERSION }}
           clojars-username: ${{ secrets.CLOJARS_USERNAME }}
           clojars-deploy-token: ${{ secrets.CLOJARS_PASSWORD }}
+
+    - name: Craft Draft Release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: true
+        files: target/pedestal-oidc-${{ steps.version.outputs.VERSION }}.jar
