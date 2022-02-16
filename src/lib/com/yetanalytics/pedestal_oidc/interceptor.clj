@@ -30,12 +30,13 @@
       (if (cstr/starts-with? auth-header "Bearer ")
         (let [access-token (subs auth-header 7)]
           (try
-            (assoc-in ctx
-                      [:request
-                       :com.yetanalytics.pedestal-oidc/claims]
-                      (jwt/unsign
-                       keyset
-                       access-token))
+            (-> ctx
+                (assoc :com.yetanalytics.pedestal-oidc/token access-token)
+                (assoc-in [:request
+                           :com.yetanalytics.pedestal-oidc/claims]
+                          (jwt/unsign
+                           keyset
+                           access-token)))
             (catch clojure.lang.ExceptionInfo exi
               (case (some-> exi
                             ex-data
