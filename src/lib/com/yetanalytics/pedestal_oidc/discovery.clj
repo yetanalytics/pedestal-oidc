@@ -20,11 +20,13 @@
   :ret map?)
 
 (defn get-openid-config
-  [config-uri]
+  [config-uri
+   & {:keys [key-fn]
+      :or {key-fn str}}]
   (try (with-open [rdr (io/reader (io/input-stream config-uri))]
-         (json/parse-stream rdr))
+         (json/parse-stream rdr key-fn))
        (catch Exception ex
-         (throw (ex-info "Could not retrieve public keys!"
+         (throw (ex-info "Could not retrieve openid configuration!"
                          {:type ::get-openid-config-fail
                           :config-uri config-uri}
                          ex)))))
