@@ -21,7 +21,8 @@
    required?
    check-header
    unauthorized
-   keyset]
+   keyset
+   unsign-opts]
   (try
     (if-let [auth-header (get-in ctx
                                  [:request
@@ -36,7 +37,8 @@
                            :com.yetanalytics.pedestal-oidc/claims]
                           (jwt/unsign
                            keyset
-                           access-token)))
+                           access-token
+                           unsign-opts)))
             (catch clojure.lang.ExceptionInfo exi
               (case (some-> exi
                             ex-data
@@ -81,12 +83,14 @@
              check-header
              unauthorized
              async?
-             keyset-blocking?]
+             keyset-blocking?
+             unsign-opts]
       :or {required? true
            check-header "authorization"
            unauthorized default-unauthorized
            async? false
-           keyset-blocking? false}}]
+           keyset-blocking? false
+           unsign-opts {}}}]
   (i/interceptor
    {:enter
     (fn [ctx]
@@ -101,7 +105,8 @@
              required?
              check-header
              unauthorized
-             keyset)
+             keyset
+             unsign-opts)
             (unauthorized ctx :keyset-invalid)))
         (try
           (if-some [keyset (get-keyset-fn ctx)]
@@ -110,7 +115,8 @@
              required?
              check-header
              unauthorized
-             keyset)
+             keyset
+             unsign-opts)
             (unauthorized ctx :keyset-invalid))
           (catch Exception ex
             (unauthorized ctx :keyset-error ex)))))}))
