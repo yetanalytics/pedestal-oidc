@@ -18,11 +18,10 @@
     (testing "decodes, sync"
       (let [{:keys [enter]} (decode-interceptor
                              get-keyset-fn)]
-        (is (= {:com.yetanalytics.pedestal-oidc/token "eyJhbGciOiJSUzI1NiIsImtpZCI6ImZvbyJ9.eyJiYXIiOiJiYXoifQ.hFdq5YhGabJUl9gemxt7lmNMEDyTL7A3z_i1qk-1NdU48yljsLTfa7tsZQuHtQzmJVJxBDX7GJ4f-0a_b6NMuIZ2ekYUiR__S4pzElaK0jP0DECV8Z54fo0Uq3LhhItF0BwjgjIKYKc1a8Sk5y9W9gRrFAcFbQr5e8GUO5vRjqA"
+        (is (= {:com.yetanalytics.pedestal-oidc/token jwt
                 :request
                 {:headers
-                 {"authorization"
-                  "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImZvbyJ9.eyJiYXIiOiJiYXoifQ.hFdq5YhGabJUl9gemxt7lmNMEDyTL7A3z_i1qk-1NdU48yljsLTfa7tsZQuHtQzmJVJxBDX7GJ4f-0a_b6NMuIZ2ekYUiR__S4pzElaK0jP0DECV8Z54fo0Uq3LhhItF0BwjgjIKYKc1a8Sk5y9W9gRrFAcFbQr5e8GUO5vRjqA"},
+                 {"authorization" auth-header},
                  :com.yetanalytics.pedestal-oidc/claims {:bar "baz"}}}
                (enter {:request {:headers {"authorization" auth-header}}})))))
     (testing "passes through unsign args"
@@ -103,10 +102,9 @@
                              (fn [_]
                                (a/go (get-keyset-fn)))
                              :async? true)]
-        (is (= {:com.yetanalytics.pedestal-oidc/token "eyJhbGciOiJSUzI1NiIsImtpZCI6ImZvbyJ9.eyJiYXIiOiJiYXoifQ.hFdq5YhGabJUl9gemxt7lmNMEDyTL7A3z_i1qk-1NdU48yljsLTfa7tsZQuHtQzmJVJxBDX7GJ4f-0a_b6NMuIZ2ekYUiR__S4pzElaK0jP0DECV8Z54fo0Uq3LhhItF0BwjgjIKYKc1a8Sk5y9W9gRrFAcFbQr5e8GUO5vRjqA"
+        (is (= {:com.yetanalytics.pedestal-oidc/token jwt
                 :request
                 {:headers
-                 {"authorization"
-                  "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImZvbyJ9.eyJiYXIiOiJiYXoifQ.hFdq5YhGabJUl9gemxt7lmNMEDyTL7A3z_i1qk-1NdU48yljsLTfa7tsZQuHtQzmJVJxBDX7GJ4f-0a_b6NMuIZ2ekYUiR__S4pzElaK0jP0DECV8Z54fo0Uq3LhhItF0BwjgjIKYKc1a8Sk5y9W9gRrFAcFbQr5e8GUO5vRjqA"},
+                 {"authorization" auth-header},
                  :com.yetanalytics.pedestal-oidc/claims {:bar "baz"}}}
                (a/<!! (enter {:request {:headers {"authorization" auth-header}}}))))))))
