@@ -77,6 +77,7 @@
     :unauthorized - A function that will receive the context map to handle a 401,
       a failure keyword and possibly an exception.
     :check-header - the header to check for the access token.
+    :unsign-opts - extra options to pass to buddy-sign.
   "
   [get-keyset-fn
    & {:keys [required?
