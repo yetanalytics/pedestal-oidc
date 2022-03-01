@@ -11,9 +11,10 @@
 
 (defn issuer->config-uri
   [issuer]
-  (assert (not (cstr/ends-with? issuer "/")) "Issuer cannot contain trailing slash/")
-  (format "%s/.well-known/openid-configuration"
-          issuer))
+  (str issuer
+       (when-not (cstr/ends-with? issuer "/")
+         "/")
+       ".well-known/openid-configuration"))
 
 (s/fdef get-openid-config
   :args (s/cat :config-uri string?)
