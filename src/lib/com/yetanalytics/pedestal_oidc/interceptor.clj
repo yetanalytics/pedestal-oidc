@@ -93,7 +93,8 @@
            keyset-blocking? false
            unsign-opts {}}}]
   (i/interceptor
-   {:enter
+   {:name ::decode-interceptor
+    :enter
     (fn [ctx]
       (if async?
         (a/go
