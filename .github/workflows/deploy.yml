@@ -11,13 +11,13 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup CD Environment
-      uses: yetanalytics/actions/setup-env@v0.0.2
+      uses: yetanalytics/actions/setup-env@v0.0.4
 
     - name: Cache Deps
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ~/.m2
@@ -37,7 +37,7 @@ jobs:
       run: echo ::set-output name=VERSION::${GITHUB_REF#refs\/tags\/v}
 
     - name: Build and deploy to Clojars
-      uses: yetanalytics/actions/deploy-clojars@v0.0.2
+      uses: yetanalytics/actions/deploy-clojars@v0.0.4
       with:
           artifact-id: 'pedestal-oidc'
           src-dirs: '["src/lib"]'
@@ -47,7 +47,7 @@ jobs:
           clojars-deploy-token: ${{ secrets.CLOJARS_PASSWORD }}
 
     - name: Craft Draft Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v1 # TODO: Update when new version is released 
       with:
         draft: true
         files: target/pedestal-oidc-${{ steps.version.outputs.VERSION }}.jar
