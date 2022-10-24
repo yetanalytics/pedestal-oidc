@@ -34,7 +34,7 @@ jobs:
 
     - name: Extract version
       id: version
-      run: echo ::set-output name=VERSION::${GITHUB_REF#refs\/tags\/v}
+      run: echo version=${GITHUB_REF#refs\/tags\/v} >> $GITHUB_OUTPUT
 
     - name: Build and deploy to Clojars
       uses: yetanalytics/actions/deploy-clojars@v0.0.4
@@ -42,7 +42,7 @@ jobs:
           artifact-id: 'pedestal-oidc'
           src-dirs: '["src/lib"]'
           resource-dirs: '[]'
-          version: ${{ steps.version.outputs.VERSION }}
+          version: ${{ steps.version.outputs.version }}
           clojars-username: ${{ secrets.CLOJARS_USERNAME }}
           clojars-deploy-token: ${{ secrets.CLOJARS_PASSWORD }}
 
@@ -50,4 +50,4 @@ jobs:
       uses: softprops/action-gh-release@v1 # TODO: Update when new version is released 
       with:
         draft: true
-        files: target/pedestal-oidc-${{ steps.version.outputs.VERSION }}.jar
+        files: target/pedestal-oidc-${{ steps.version.outputs.version }}.jar
