@@ -11,3 +11,8 @@ test:
 
 keycloak-demo:
 	cd keycloak; docker compose up
+
+.PHONY: pom.xml
+
+pom.xml:
+	clojure -X:deps mvn-pom :user nil
