@@ -1,9 +1,18 @@
 {:paths ["src/lib" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.10.3"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.4"}
         io.pedestal/pedestal.service {:mvn/version "0.6.3"}
         buddy/buddy-sign {:mvn/version "3.5.351"}
         org.clojure/tools.logging {:mvn/version "1.2.4"}
         cheshire/cheshire {:mvn/version "5.12.0"}
+        ;; Keep Buddy's cryptography and Cheshire's JSON dependencies patched.
+        org.bouncycastle/bcprov-jdk18on {:mvn/version "1.85"}
+        org.bouncycastle/bcpkix-jdk18on {:mvn/version "1.85"}
+        org.bouncycastle/bcutil-jdk18on {:mvn/version "1.85"}
+        com.fasterxml.jackson.core/jackson-core {:mvn/version "2.18.11"}
+        com.fasterxml.jackson.dataformat/jackson-dataformat-smile {:mvn/version "2.18.11"}
+        com.fasterxml.jackson.dataformat/jackson-dataformat-cbor {:mvn/version "2.18.11"}
+        commons-fileupload/commons-fileupload {:mvn/version "1.6.0"}
+        commons-io/commons-io {:mvn/version "2.21.0"}
         org.clojure/core.async {:mvn/version "1.5.648"}}
  :aliases
  {:dev {:extra-paths ["src/dev"]
